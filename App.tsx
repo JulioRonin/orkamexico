@@ -5,8 +5,8 @@ import SalesScreen from './SalesScreen';
 import PartnersScreen from './PartnersScreen';
 import PaymentRegistrationModal from './PaymentRegistrationModal';
 import { getMetrics, getClientBalances, getDetailedBalanceReport, getClientCollectionDetail, salesData as initialSalesData, Sale } from './data';
-import truckImage from './Public/orka_fuel_tanker.png';
-import logoBlanco from './logo/ORKA MEXICO/ORKA-MEXICO-BLANCO.png';
+import truckImage from './public/orka_fuel_tanker.png';
+import logoBlanco from './logo/orka_mexico/ORKA-MEXICO-BLANCO.png';
 import LoginScreen, { UserRole } from './LoginScreen';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -70,7 +70,7 @@ const ReconciliationCard = () => {
     // Mock data simulation
     const bolVolume = 32000;
     const meterVolume = 31820;
-    const variance = bolVolume-meterVolume;
+    const variance = bolVolume - meterVolume;
     const variancePercent = (variance / bolVolume) * 100;
     const tolerance = 0.5; // 0.5% tolerance
     const isRisk = variancePercent > tolerance;
@@ -335,7 +335,7 @@ const DashboardScreen = () => {
                                             cx="80" cy="80" fill="none" r="68"
                                             stroke="#10B981"
                                             strokeDasharray="427"
-                                            strokeDashoffset={Math.max(0, 427-(427 * ((Number(metrics.statusCounts['DONE']) || 0) / Math.max(1, Number(metrics.totalOrdersCount)))))}
+                                            strokeDashoffset={Math.max(0, 427 - (427 * ((Number(metrics.statusCounts['DONE']) || 0) / Math.max(1, Number(metrics.totalOrdersCount)))))}
                                             strokeLinecap="round" strokeWidth="12"
                                             className="transition-all duration-1500 ease-out"
                                         ></circle>
@@ -384,7 +384,7 @@ const DashboardScreen = () => {
                         <div className="md:col-span-4 md:row-span-1 bg-card-dark p-5 rounded-[2rem] shadow-xl border border-white/5 flex flex-col justify-between animate-in slide-in-from-bottom-4 duration-500 delay-300 fill-mode-both">
                             <h3 className="text-white font-bold text-sm mb-3">Galones por Producto</h3>
                             <div className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar">
-                                {Object.entries(metrics.volumeByProduct).sort((a, b) => (b[1] as number)-(a[1] as number)).map(([product, volume], idx) => (
+                                {Object.entries(metrics.volumeByProduct).sort((a, b) => (b[1] as number) - (a[1] as number)).map(([product, volume], idx) => (
                                     <div key={product} className="space-y-1">
                                         <div className="flex justify-between text-[11px]">
                                             <span className="text-gray-300 font-medium">{product}</span>
@@ -411,7 +411,7 @@ const DashboardScreen = () => {
 
                             <h3 className="text-white font-bold text-sm mb-3 relative z-10">Top Clientes</h3>
                             <div className="flex-1 flex flex-col justify-center gap-3 relative z-10">
-                                {Object.entries(metrics.revenueByClient).sort((a, b) => (b[1] as number)-(a[1] as number)).slice(0, 3).map(([client, revenue], idx) => (
+                                {Object.entries(metrics.revenueByClient).sort((a, b) => (b[1] as number) - (a[1] as number)).slice(0, 3).map(([client, revenue], idx) => (
                                     <div key={client} className="flex items-center gap-2">
                                         <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black ${idx === 0 ? 'bg-yellow-500/20 text-yellow-500' : idx === 1 ? 'bg-gray-300/20 text-gray-300' : 'bg-orange-400/20 text-orange-400'} `}>
                                             {idx + 1}
@@ -980,14 +980,14 @@ const InvoiceGenerationModal = ({
                                 disabled={sale.invoiced}
                                 onClick={() => !sale.invoiced && onSelectSale(sale)}
                                 className={`w-full text-left rounded-xl p-3 flex items-center justify-between group transition-all border ${sale.invoiced
-                                        ? 'bg-black/20 border-white/5 opacity-60 cursor-not-allowed'
-                                        : 'bg-black/40 hover:bg-black/60 border-white/5 hover:border-green-500/30'
+                                    ? 'bg-black/20 border-white/5 opacity-60 cursor-not-allowed'
+                                    : 'bg-black/40 hover:bg-black/60 border-white/5 hover:border-green-500/30'
                                     } `}
                             >
                                 <div className="flex items-center gap-3">
                                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${sale.invoiced
-                                            ? 'bg-green-900/20 text-green-500'
-                                            : 'bg-gray-800 text-gray-400 group-hover:text-white group-hover:bg-gray-700'
+                                        ? 'bg-green-900/20 text-green-500'
+                                        : 'bg-gray-800 text-gray-400 group-hover:text-white group-hover:bg-gray-700'
                                         } `}>
                                         <span className="material-symbols-outlined">
                                             {sale.invoiced ? 'check_circle' : (sale.product.includes('Oil') ? 'water_drop' : 'local_shipping')}
@@ -1451,7 +1451,7 @@ const BalanceReportModal = ({
                                     <div className="bg-slate-900 p-5 rounded-sm border-l-4 border-green-500 col-span-3 md:col-span-1">
                                         <p className="text-[10px] font-bold text-slate-300 uppercase mb-1 text-white/70">Saldo Final (Cierre)</p>
                                         <p className="text-2xl font-black text-white">
-                                            ${(report.openingBalance + report.dailyTotal-report.dailyPayments).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                            ${(report.openingBalance + report.dailyTotal - report.dailyPayments).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                                         </p>
                                     </div>
                                 </div>
@@ -1928,17 +1928,17 @@ const FinanceScreen = ({
     // Helper functions for data analysis wrapped to use the current 'sales' state
     const currentGetClientBalances = (filter: string) => {
         const dates = sales.map(s => s.date).sort();
-        const latestDate = dates[dates.length-1];
+        const latestDate = dates[dates.length - 1];
         const clients = Array.from(new Set(sales.map(s => s.customer)));
         const results = clients.map(client => {
             const clientSales = sales.filter(s => s.customer === client);
             const currentTotal = clientSales.reduce((acc, s) => acc + s.totalSale, 0);
             const currentPaid = clientSales.reduce((acc, s) => acc + (s.paidAmount || 0), 0);
-            const currentPending = currentTotal-currentPaid;
+            const currentPending = currentTotal - currentPaid;
             const prevSales = clientSales.filter(s => s.date < latestDate);
             const prevTotal = prevSales.reduce((acc, s) => acc + s.totalSale, 0);
             const prevPaid = prevSales.reduce((acc, s) => acc + (s.paidAmount || 0), 0);
-            const prevBalance = prevTotal-prevPaid;
+            const prevBalance = prevTotal - prevPaid;
             return {
                 client,
                 currentPending,
@@ -1952,7 +1952,7 @@ const FinanceScreen = ({
 
     const currentGetClientCollectionDetail = (clientName: string) => {
         const dates = sales.map(s => s.date).sort();
-        const referenceDateStr = dates[dates.length-1];
+        const referenceDateStr = dates[dates.length - 1];
         const clientSales = sales.filter(s => s.customer === clientName);
         const details = clientSales.map(sale => {
             const loadDate = new Date(sale.date);
@@ -1987,7 +1987,7 @@ const FinanceScreen = ({
     const partialPaidCount = filteredSales.filter(s => s.paymentStatus === 'PARTIAL').length;
 
     // 3. Pending
-    const pendingAmount = totalNominatedAmount-totalPaidAmount;
+    const pendingAmount = totalNominatedAmount - totalPaidAmount;
 
     // 4. Previous Day Balance (Total)
     const totalPrevBalance = clientBalances.reduce((acc, curr) => acc + curr.prevBalance, 0);

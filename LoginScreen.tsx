@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import logoBlanco from './logo/ORKA MEXICO/ORKA-MEXICO-BLANCO.png';
+import logoBlanco from './logo/orka_mexico/ORKA-MEXICO-BLANCO.png';
 
 export type UserRole = 'ADMIN' | 'VENTAS' | 'CREDITO' | 'OPERACIONES';
 
