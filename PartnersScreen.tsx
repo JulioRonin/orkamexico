@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getUniqueValues } from './data';
+import { supabaseService } from './supabaseService';
 
 interface Partner {
     id: string;
@@ -9,7 +9,6 @@ interface Partner {
     status: 'Active' | 'Inactive';
     contact: string;
     email: string;
-    // Fiscal Information
     rfc?: string;
     legalName?: string;
     fiscalAddress?: string;
@@ -19,114 +18,108 @@ interface Partner {
 
 const PartnersScreen = () => {
     const navigate = useNavigate();
-    // Updated tabs: clients | carriers | suppliers
     const [activeTab, setActiveTab] = useState<'clients' | 'carriers' | 'suppliers'>('clients');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentPartner, setCurrentPartner] = useState<Partner | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [loading, setLoading] = useState(true);
 
-    // --- State Initialization ---
+    const [partners, setPartners] = useState<Partner[]>([]);
 
-    // 1. Clients (Same as before)
-    const [clients, setClients] = useState<Partner[]>(() => {
-        const uniqueClients = getUniqueValues('customer');
-        return uniqueClients.map((name, index) => ({
-            id: `c-${index}`,
-            name: String(name),
-            type: 'Client',
-            status: 'Active',
-            contact: 'Admin',
-            email: 'contact@client.com',
-            rfc: 'XAXX010101000',
-            legalName: String(name) + ' S.A. de C.V.',
-            fiscalAddress: 'Av. Principal 123, Ciudad de México',
-            zipCode: '06600',
-            fiscalRegime: '601 - General de Ley Personas Morales'
-        }));
-    });
+    const loadPartners = async () => {
+        try {
+            setLoading(true);
+            const data = await supabaseService.getAllPartners();
+            setPartners(data as Partner[]);
+        } catch (error) {
+            console.error('Error loading partners:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-    // 2. Carriers (Formerly Suppliers logic, now renamed to Transportistas)
-    const [carriers, setCarriers] = useState<Partner[]>(() => {
-        const uniqueCarriers = getUniqueValues('carrier');
-        return uniqueCarriers.map((name, index) => ({
-            id: `k-${index}`, // k for carrier
-            name: String(name),
-            type: 'Carrier',
-            status: 'Active',
-            contact: 'Logistics Mgr',
-            email: 'ops@carrier.com',
-            rfc: 'XAXX010101000',
-            legalName: String(name) + ' Logistics S.A. de C.V.'
-        }));
-    });
+    useEffect(() => {
+        loadPartners();
+    }, []);
 
-    // 3. Suppliers (New section with specific hardcoded data)
-    const [suppliers, setSuppliers] = useState<Partner[]>([
-        { id: 's-1', name: 'Greyrock', type: 'Supplier', status: 'Active', contact: 'Sales Rep', email: 'contact@greyrock.com', rfc: 'GRE101010ABC' },
-        { id: 's-2', name: 'Motus', type: 'Supplier', status: 'Active', contact: 'Supply Mgr', email: 'info@motus.com', rfc: 'MOT202020DEF' },
-        { id: 's-3', name: 'Titan', type: 'Supplier', status: 'Active', contact: 'Account Mgr', email: 'sales@titan.com', rfc: 'TIT303030GHI' },
-        { id: 's-4', name: 'Orka Oleo', type: 'Supplier', status: 'Active', contact: 'Internal', email: 'ops@orka.com', rfc: 'ORK404040JKL' },
-    ]);
-
-    // --- Combined Display Logic ---
     const displayedPartners = useMemo(() => {
-        let source: Partner[] = [];
-        if (activeTab === 'clients') source = clients;
-        else if (activeTab === 'carriers') source = carriers;
-        else if (activeTab === 'suppliers') source = suppliers;
+        const typeMap = {
+            'clients': 'Client',
+            'carriers': 'Carrier',
+            'suppliers': 'Supplier'
+        };
+        const currentType = typeMap[activeTab];
 
-        return source.filter(p =>
+        return partners.filter(p => p.type === currentType).filter(p =>
             p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             p.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (p.rfc && p.rfc.toLowerCase().includes(searchTerm.toLowerCase()))
         );
-    }, [activeTab, clients, carriers, suppliers, searchTerm]);
+    }, [activeTab, partners, searchTerm]);
 
-    const handleSave = (e: React.FormEvent) => {
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         const form = e.target as HTMLFormElement;
         const formData = new FormData(form);
 
-        let type: 'Client' | 'Supplier' | 'Carrier' = 'Client';
-        if (activeTab === 'carriers') type = 'Carrier';
-        if (activeTab === 'suppliers') type = 'Supplier';
+        const typeMap = {
+            'clients': 'Client',
+            'carriers': 'Carrier',
+            'suppliers': 'Supplier'
+        };
+        const type = typeMap[activeTab] as 'Client' | 'Supplier' | 'Carrier';
 
-        const newPartner: Partner = {
-            id: currentPartner ? currentPartner.id : `${activeTab.charAt(0)}-${Date.now()}`,
+        const partnerData = {
             name: formData.get('name') as string,
             type: type,
             status: formData.get('status') as 'Active' | 'Inactive',
             contact: formData.get('contact') as string,
             email: formData.get('email') as string,
             rfc: formData.get('rfc') as string,
-            legalName: formData.get('legalName') as string,
-            fiscalAddress: formData.get('fiscalAddress') as string,
-            zipCode: formData.get('zipCode') as string,
-            fiscalRegime: formData.get('fiscalRegime') as string,
+            legal_name: formData.get('legalName') as string,
+            fiscal_address: formData.get('fiscalAddress') as string,
+            zip_code: formData.get('zipCode') as string,
+            fiscal_regime: formData.get('fiscalRegime') as string,
         };
 
-        if (activeTab === 'clients') {
-            setClients(prev => currentPartner ? prev.map(p => p.id === currentPartner.id ? newPartner : p) : [...prev, newPartner]);
-        } else if (activeTab === 'carriers') {
-            setCarriers(prev => currentPartner ? prev.map(p => p.id === currentPartner.id ? newPartner : p) : [...prev, newPartner]);
-        } else {
-            setSuppliers(prev => currentPartner ? prev.map(p => p.id === currentPartner.id ? newPartner : p) : [...prev, newPartner]);
+        try {
+            if (currentPartner) {
+                await supabaseService.updatePartner(currentPartner.id, partnerData);
+            } else {
+                await supabaseService.createPartner(partnerData);
+            }
+            await loadPartners();
+            setIsModalOpen(false);
+            setCurrentPartner(null);
+        } catch (error) {
+            console.error('Error saving partner:', error);
+            alert('Error al guardar socio');
         }
-        setIsModalOpen(false);
-        setCurrentPartner(null);
     };
 
-    const handleDelete = (id: string) => {
-        if (!confirm('Are you sure you want to delete this partner?')) return;
-        if (activeTab === 'clients') setClients(prev => prev.filter(p => p.id !== id));
-        else if (activeTab === 'carriers') setCarriers(prev => prev.filter(p => p.id !== id));
-        else setSuppliers(prev => prev.filter(p => p.id !== id));
+    const handleDelete = async (id: string) => {
+        if (!confirm('¿Estás seguro de que deseas eliminar este socio?')) return;
+        try {
+            await supabaseService.deletePartner(id);
+            await loadPartners();
+        } catch (error) {
+            console.error('Error deleting partner:', error);
+            alert('Error al eliminar socio');
+        }
     };
 
     const getTabLabel = () => {
         if (activeTab === 'clients') return 'Cliente';
         if (activeTab === 'carriers') return 'Transportista';
         return 'Proveedor';
+    }
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-background-dark flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+            </div>
+        );
     }
 
     return (
@@ -200,7 +193,7 @@ const PartnersScreen = () => {
                                     <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold 
                                         ${partner.type === 'Client' ? 'bg-blue-500/10 text-blue-400' :
                                             partner.type === 'Carrier' ? 'bg-orange-500/10 text-orange-400' : 'bg-purple-500/10 text-purple-400'}`}>
-                                        {partner.name.charAt(0)}
+                                        {partner.name?.charAt(0)}
                                     </div>
                                     <div>
                                         <h3 className="font-bold text-white leading-tight">{partner.name}</h3>
@@ -238,7 +231,7 @@ const PartnersScreen = () => {
                                 <span className={`text-[10px] px-2 py-0.5 rounded border ${partner.status === 'Active' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-gray-500/10 text-gray-400 border-gray-500/20'}`}>
                                     {partner.status === 'Active' ? 'Activo' : 'Inactivo'}
                                 </span>
-                                <span className="text-[10px] text-gray-600 font-mono">ID: {partner.id}</span>
+                                <span className="text-[10px] text-gray-600 font-mono">ID: {partner.id.slice(0, 8)}</span>
                             </div>
                         </div>
                     ))}

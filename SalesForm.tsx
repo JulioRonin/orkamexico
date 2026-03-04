@@ -1,41 +1,93 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getUniqueValues } from './data';
+import { supabaseService } from './supabaseService';
 
 const Sales = () => {
     const navigate = useNavigate();
+    const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         date: new Date().toISOString().slice(0, 10),
-        customerName: '',
+        customer_id: '',
         gallons: '',
-        product: '',
-        paymentTerms: '',
-        carrier: '',
-        units: '',
-        moleculeCost: '',
-        salePrice: '',
-        supplier: ''
+        product_id: '',
+        payment_terms: '',
+        carrier_id: '',
+        net_barrels: '',
+        molecule_cost: '',
+        sale_price: '',
+        supplier_id: ''
     });
 
-    const customers = getUniqueValues('customer');
-    const products = getUniqueValues('product');
-    const carriers = getUniqueValues('carrier');
-    // Suppliers aren't explicitly in the CSV but we can infer or leave as free text for now, 
-    // or use Terminals as proxy if that fits, but let's stick to free text or maybe Terminals?
-    // The CSV has 'Terminal' which might be the supplier source. Let's use Terminal for Supplier suggestion.
-    const terminals = getUniqueValues('terminal');
+    const [customers, setCustomers] = useState<any[]>([]);
+    const [products, setProducts] = useState<any[]>([]);
+    const [carriers, setCarriers] = useState<any[]>([]);
+    const [suppliers, setSuppliers] = useState<any[]>([]);
+
+    useEffect(() => {
+        const loadInitialData = async () => {
+            try {
+                setLoading(true);
+                const [c, p, carr, supp] = await Promise.all([
+                    supabaseService.getPartners('Client'),
+                    supabaseService.getProducts(),
+                    supabaseService.getPartners('Carrier'),
+                    supabaseService.getPartners('Supplier')
+                ]);
+                setCustomers(c);
+                setProducts(p);
+                setCarriers(carr);
+                setSuppliers(supp);
+            } catch (error) {
+                console.error('Error loading form data:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadInitialData();
+    }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log('Sales Data Submitted:', formData);
-        // Here we will eventually add Supabase integration
-        alert('Venta registrada (simulación)');
+        try {
+            setSubmitting(true);
+            const saleToInsert = {
+                date: formData.date,
+                customer_id: formData.customer_id,
+                product_id: formData.product_id,
+                carrier_id: formData.carrier_id,
+                supplier_id: formData.supplier_id || null,
+                gallons: parseFloat(formData.gallons),
+                net_barrels: parseFloat(formData.net_barrels) || 0,
+                unit_cost: parseFloat(formData.molecule_cost),
+                rate: parseFloat(formData.sale_price),
+                status: 'ON TRACK', // Default status for new sales
+                total_sale: parseFloat(formData.gallons) * parseFloat(formData.sale_price)
+            };
+
+            await supabaseService.createSale(saleToInsert);
+            alert('Venta registrada exitosamente');
+            navigate('/sales');
+        } catch (error) {
+            console.error('Error creating sale:', error);
+            alert('Error al registrar la venta');
+        } finally {
+            setSubmitting(false);
+        }
     };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-background-dark flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-accent-orange border-t-transparent"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-background-dark pb-32 text-slate-100 font-sans selection:bg-accent-orange/30">
@@ -93,19 +145,17 @@ const Sales = () => {
                                 <label className="text-xs font-medium text-gray-400 group-focus-within:text-blue-400 transition-colors">Cliente</label>
                                 <div className="relative">
                                     <span className="absolute left-4 top-3.5 material-symbols-outlined text-gray-600 text-[18px]">person</span>
-                                    <input
-                                        type="text"
-                                        name="customerName"
-                                        value={formData.customerName}
+                                    <select
+                                        name="customer_id"
+                                        value={formData.customer_id}
                                         onChange={handleChange}
-                                        placeholder="Nombre del Cliente"
-                                        list="customers-list"
-                                        className="w-full bg-black/40 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all"
+                                        className="w-full bg-black/40 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all appearance-none"
                                         required
-                                    />
-                                    <datalist id="customers-list">
-                                        {customers.map(c => <option key={String(c)} value={String(c)} />)}
-                                    </datalist>
+                                    >
+                                        <option value="">Seleccionar Cliente</option>
+                                        {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                    </select>
+                                    <span className="absolute right-4 top-3.5 material-symbols-outlined text-gray-600 text-sm pointer-events-none">expand_more</span>
                                 </div>
                             </div>
 
@@ -114,14 +164,14 @@ const Sales = () => {
                                 <div className="relative">
                                     <span className="absolute left-4 top-3.5 material-symbols-outlined text-gray-600 text-[18px]">category</span>
                                     <select
-                                        name="product"
-                                        value={formData.product}
+                                        name="product_id"
+                                        value={formData.product_id}
                                         onChange={handleChange}
                                         className="w-full bg-black/40 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all appearance-none"
                                         required
                                     >
-                                        <option value="" className="bg-gray-900 text-gray-500">Seleccionar Producto</option>
-                                        {products.map(p => <option key={String(p)} value={String(p)} className="bg-gray-900">{String(p)}</option>)}
+                                        <option value="">Seleccionar Producto</option>
+                                        {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                     </select>
                                     <span className="absolute right-4 top-3.5 material-symbols-outlined text-gray-600 text-sm pointer-events-none">expand_more</span>
                                 </div>
@@ -132,8 +182,8 @@ const Sales = () => {
                                 <div className="relative">
                                     <span className="absolute left-4 top-3.5 material-symbols-outlined text-gray-600 text-[18px]">credit_card</span>
                                     <select
-                                        name="paymentTerms"
-                                        value={formData.paymentTerms}
+                                        name="payment_terms"
+                                        value={formData.payment_terms}
                                         onChange={handleChange}
                                         className="w-full bg-black/40 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all appearance-none"
                                         required
@@ -163,19 +213,17 @@ const Sales = () => {
                                 <label className="text-xs font-medium text-gray-400 group-focus-within:text-accent-orange transition-colors">Transportista (Carrier)</label>
                                 <div className="relative">
                                     <span className="absolute left-4 top-3.5 material-symbols-outlined text-gray-600 text-[18px]">local_shipping</span>
-                                    <input
-                                        type="text"
-                                        name="carrier"
-                                        value={formData.carrier}
+                                    <select
+                                        name="carrier_id"
+                                        value={formData.carrier_id}
                                         onChange={handleChange}
-                                        placeholder="Nombre del Carrier"
-                                        list="carriers-list"
-                                        className="w-full bg-black/40 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-accent-orange/50 focus:ring-1 focus:ring-accent-orange/50 transition-all"
+                                        className="w-full bg-black/40 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-sm text-white focus:outline-none focus:border-accent-orange/50 focus:ring-1 focus:ring-accent-orange/50 transition-all appearance-none"
                                         required
-                                    />
-                                    <datalist id="carriers-list">
-                                        {carriers.map(c => <option key={String(c)} value={String(c)} />)}
-                                    </datalist>
+                                    >
+                                        <option value="">Seleccionar Carrier</option>
+                                        {carriers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                    </select>
+                                    <span className="absolute right-4 top-3.5 material-symbols-outlined text-gray-600 text-sm pointer-events-none">expand_more</span>
                                 </div>
                             </div>
 
@@ -183,19 +231,17 @@ const Sales = () => {
                                 <label className="text-xs font-medium text-gray-400 group-focus-within:text-accent-orange transition-colors">Proveedor</label>
                                 <div className="relative">
                                     <span className="absolute left-4 top-3.5 material-symbols-outlined text-gray-600 text-[18px]">warehouse</span>
-                                    <input
-                                        type="text"
-                                        name="supplier"
-                                        value={formData.supplier}
+                                    <select
+                                        name="supplier_id"
+                                        value={formData.supplier_id}
                                         onChange={handleChange}
-                                        placeholder="Nombre del Proveedor / Terminal"
-                                        list="terminals-list"
-                                        className="w-full bg-black/40 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-accent-orange/50 focus:ring-1 focus:ring-accent-orange/50 transition-all"
+                                        className="w-full bg-black/40 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-sm text-white focus:outline-none focus:border-accent-orange/50 focus:ring-1 focus:ring-accent-orange/50 transition-all appearance-none"
                                         required
-                                    />
-                                    <datalist id="terminals-list">
-                                        {terminals.map(t => <option key={String(t)} value={String(t)} />)}
-                                    </datalist>
+                                    >
+                                        <option value="">Seleccionar Proveedor</option>
+                                        {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                    </select>
+                                    <span className="absolute right-4 top-3.5 material-symbols-outlined text-gray-600 text-sm pointer-events-none">expand_more</span>
                                 </div>
                             </div>
 
@@ -216,15 +262,15 @@ const Sales = () => {
                             </div>
 
                             <div className="space-y-2 group">
-                                <label className="text-xs font-medium text-gray-400 group-focus-within:text-accent-orange transition-colors">Cantidad de Unidades</label>
+                                <label className="text-xs font-medium text-gray-400 group-focus-within:text-accent-orange transition-colors">Net Barrels</label>
                                 <div className="relative">
-                                    <span className="absolute left-4 top-3.5 material-symbols-outlined text-gray-600 text-[18px]">numbers</span>
+                                    <span className="absolute left-4 top-3.5 material-symbols-outlined text-gray-600 text-[18px]">oil_barrel</span>
                                     <input
                                         type="number"
-                                        name="units"
-                                        value={formData.units}
+                                        name="net_barrels"
+                                        value={formData.net_barrels}
                                         onChange={handleChange}
-                                        placeholder="1"
+                                        placeholder="0"
                                         className="w-full bg-black/40 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-accent-orange/50 focus:ring-1 focus:ring-accent-orange/50 transition-all"
                                         required
                                     />
@@ -237,8 +283,8 @@ const Sales = () => {
                                     <span className="absolute left-4 top-3.5 text-gray-500 font-mono text-lg">$</span>
                                     <input
                                         type="number"
-                                        name="moleculeCost"
-                                        value={formData.moleculeCost}
+                                        name="molecule_cost"
+                                        value={formData.molecule_cost}
                                         onChange={handleChange}
                                         placeholder="0.00"
                                         step="0.01"
@@ -254,8 +300,8 @@ const Sales = () => {
                                     <span className="absolute left-4 top-3.5 text-gray-500 font-mono text-lg">$</span>
                                     <input
                                         type="number"
-                                        name="salePrice"
-                                        value={formData.salePrice}
+                                        name="sale_price"
+                                        value={formData.sale_price}
                                         onChange={handleChange}
                                         placeholder="0.00"
                                         step="0.01"
@@ -273,10 +319,11 @@ const Sales = () => {
                         </button>
                         <button
                             type="submit"
-                            className="px-8 py-3 rounded-xl bg-gradient-to-r from-accent-orange to-orange-600 text-white text-sm font-bold shadow-[0_0_20px_rgba(249,115,22,0.3)] hover:shadow-[0_0_30px_rgba(249,115,22,0.5)] hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
+                            disabled={submitting}
+                            className="px-8 py-3 rounded-xl bg-gradient-to-r from-accent-orange to-orange-600 text-white text-sm font-bold shadow-[0_0_20px_rgba(249,115,22,0.3)] hover:shadow-[0_0_30px_rgba(249,115,22,0.5)] hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50 disabled:scale-100"
                         >
-                            <span className="material-symbols-outlined">check_circle</span>
-                            Confirmar Venta
+                            <span className="material-symbols-outlined">{submitting ? 'sync' : 'check_circle'}</span>
+                            {submitting ? 'Registrando...' : 'Confirmar Venta'}
                         </button>
                     </div>
                 </form>

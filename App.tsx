@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { HashRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import SalesForm from './SalesForm';
 import SalesScreen from './SalesScreen';
@@ -10,6 +10,7 @@ import logoBlanco from './logo/ORKA MEXICO/ORKA-MEXICO-BLANCO.png';
 import LoginScreen, { UserRole } from './LoginScreen';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
+import { supabaseService } from './supabaseService';
 
 // --- Shared Components ---
 
@@ -40,7 +41,7 @@ const BottomNav = ({ role, onLogout }: { role: UserRole, onLogout: () => void })
                             <button
                                 key={item.path}
                                 onClick={() => navigate(item.path)}
-                                className={`flex flex-col items-center gap-1 px-3 py-1 transition-all duration-300 hover:scale-110 ${getIconClass(item.path)}`}
+                                className={`flex flex-col items-center gap-1 px-3 py-1 transition-all duration-300 hover: scale-110 ${getIconClass(item.path)} `}
                             >
                                 <span className="material-symbols-outlined text-[22px]">{item.icon}</span>
                                 <span className="text-[9px] font-bold uppercase tracking-wider">{item.label}</span>
@@ -69,16 +70,16 @@ const ReconciliationCard = () => {
     // Mock data simulation
     const bolVolume = 32000;
     const meterVolume = 31820;
-    const variance = bolVolume - meterVolume;
+    const variance = bolVolume-meterVolume;
     const variancePercent = (variance / bolVolume) * 100;
     const tolerance = 0.5; // 0.5% tolerance
     const isRisk = variancePercent > tolerance;
 
     return (
-        <div className={`p-5 rounded-2xl border shadow-lg relative overflow-hidden transition-all ${isRisk ? 'bg-red-900/10 border-red-500/30' : 'bg-card-dark border-gray-800'}`}>
+        <div className={`p-5 rounded-2xl border shadow-lg relative overflow-hidden transition-all ${isRisk ? 'bg-red-900/10 border-red-500/30' : 'bg-card-dark border-gray-800'} `}>
             <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-2">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isRisk ? 'bg-red-500/20 text-red-500' : 'bg-green-500/20 text-green-500'}`}>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isRisk ? 'bg-red-500/20 text-red-500' : 'bg-green-500/20 text-green-500'} `}>
                         <span className="material-symbols-outlined">{isRisk ? 'warning' : 'verified'}</span>
                     </div>
                     <div>
@@ -111,7 +112,7 @@ const ReconciliationCard = () => {
             <div className="bg-black/20 rounded-lg p-3 flex items-center justify-between">
                 <div>
                     <span className="text-xs text-gray-400">Variance Detected</span>
-                    <div className={`text-lg font-bold ${isRisk ? 'text-red-400' : 'text-green-400'}`}>
+                    <div className={`text-lg font-bold ${isRisk ? 'text-red-400' : 'text-green-400'} `}>
                         {variance > 0 ? '-' : '+'}{Math.abs(variance)} L <span className="text-xs font-normal opacity-70">({variancePercent.toFixed(2)}%)</span>
                     </div>
                 </div>
@@ -121,10 +122,10 @@ const ReconciliationCard = () => {
                     <div className="absolute top-1/2 left-1/2 h-3 w-0.5 bg-gray-500 transform -translate-y-1/2 -translate-x-1/2"></div> {/* Center mark */}
                     {/* Actual value bar */}
                     <div
-                        className={`absolute top-1/2 left-1/2 h-1.5 rounded-full transform -translate-y-1/2 origin-left ${isRisk ? 'bg-red-500' : 'bg-green-500'}`}
+                        className={`absolute top-1 / 2 left-1 / 2 h-1.5 rounded-full transform-translate-y-1 / 2 origin-left ${isRisk ? 'bg-red-500' : 'bg-green-500'} `}
                         style={{
-                            width: `${Math.min(Math.abs(variancePercent) * 20, 50)}%`, // Scale for visual
-                            transform: `translateY(-50%) ${variance > 0 ? 'rotate(180deg)' : ''}`
+                            width: `${Math.min(Math.abs(variancePercent) * 20, 50)}% `, // Scale for visual
+                            transform: `translateY(-50 %) ${variance > 0 ? 'rotate(180deg)' : ''} `
                         }}
                     ></div>
                 </div>
@@ -199,7 +200,7 @@ const DashboardScreen = () => {
                                 type="date"
                                 value={selectedDateFilter === 'ALL' ? '' : selectedDateFilter}
                                 onChange={(e) => setSelectedDateFilter(e.target.value || 'ALL')}
-                                className={`bg-transparent text-xs pl-11 pr-4 py-2 outline-none cursor-pointer min-w-[150px] font-medium transition-all hover:bg-white/5 rounded-full border border-transparent hover:border-white/10 focus:bg-white/10 focus:border-primary/50 relative z-0 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer ${selectedDateFilter === 'ALL' ? 'text-transparent' : 'text-white'}`}
+                                className={`bg-transparent text-xs pl-11 pr-4 py-2 outline-none cursor-pointer min-w-[150px] font-medium transition-all hover: bg-white / 5 rounded-full border border-transparent hover: border-white / 10 focus: bg-white / 10 focus: border-primary / 50 relative z-0[&:: -webkit-calendar-picker-indicator]: opacity-0[&:: -webkit-calendar-picker-indicator]: absolute[&:: -webkit-calendar-picker-indicator]: inset-0[&:: -webkit-calendar-picker-indicator]: w-full[&:: -webkit-calendar-picker-indicator]: h-full[&:: -webkit-calendar-picker-indicator]: cursor-pointer ${selectedDateFilter === 'ALL' ? 'text-transparent' : 'text-white'} `}
                             />
                         </div>
 
@@ -254,7 +255,7 @@ const DashboardScreen = () => {
             <section className="relative min-h-[500px] h-[55vh] w-full bg-[#050505] overflow-hidden flex flex-col items-center justify-center pt-20">
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-gray-800/10 via-black to-black"></div>
 
-                {/* Truck Visual Container - Centered and Contained */}
+                {/* Truck Visual Container-Centered and Contained */}
                 <div className="relative z-10 w-full max-w-5xl mx-auto flex items-center justify-center px-4 h-full">
                     {/* Floating Title */}
                     <div className="absolute top-10 left-6 lg:left-0 z-20">
@@ -284,7 +285,7 @@ const DashboardScreen = () => {
                             <div className="mt-2 w-full bg-gray-800 h-1 rounded-full overflow-hidden relative z-10">
                                 <div
                                     className="bg-green-500 h-full w-full opacity-80 group-hover:opacity-100 transition-opacity"
-                                    style={{ width: `${Math.min(100, ((metrics.statusCounts['DONE'] || 0) / 10) * 100)}%` }}
+                                    style={{ width: `${Math.min(100, ((metrics.statusCounts['DONE'] || 0) / 10) * 100)}% ` }}
                                 ></div>
                             </div>
                             <div className="text-[10px] text-right text-green-400 mt-1 font-medium relative z-10">Completadas</div>
@@ -334,7 +335,7 @@ const DashboardScreen = () => {
                                             cx="80" cy="80" fill="none" r="68"
                                             stroke="#10B981"
                                             strokeDasharray="427"
-                                            strokeDashoffset={Math.max(0, 427 - (427 * ((Number(metrics.statusCounts['DONE']) || 0) / Math.max(1, Number(metrics.totalOrdersCount)))))}
+                                            strokeDashoffset={Math.max(0, 427-(427 * ((Number(metrics.statusCounts['DONE']) || 0) / Math.max(1, Number(metrics.totalOrdersCount)))))}
                                             strokeLinecap="round" strokeWidth="12"
                                             className="transition-all duration-1500 ease-out"
                                         ></circle>
@@ -358,7 +359,7 @@ const DashboardScreen = () => {
                                 <div className="absolute left-[10%] right-[10%] h-0.5 bg-gray-800 top-1/2 -translate-y-1/2 z-0"></div>
                                 <div
                                     className="absolute left-[10%] h-0.5 bg-gradient-to-r from-blue-500 to-green-500 top-1/2 -translate-y-1/2 z-0 transition-all duration-1000"
-                                    style={{ width: `${Math.min(80, (metrics.activeFleet / 15) * 80)}%` }} // simulated progress
+                                    style={{ width: `${Math.min(80, (metrics.activeFleet / 15) * 80)}% ` }} // simulated progress
                                 ></div>
 
                                 {/* Nodes */}
@@ -383,7 +384,7 @@ const DashboardScreen = () => {
                         <div className="md:col-span-4 md:row-span-1 bg-card-dark p-5 rounded-[2rem] shadow-xl border border-white/5 flex flex-col justify-between animate-in slide-in-from-bottom-4 duration-500 delay-300 fill-mode-both">
                             <h3 className="text-white font-bold text-sm mb-3">Galones por Producto</h3>
                             <div className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar">
-                                {Object.entries(metrics.volumeByProduct).sort((a, b) => (b[1] as number) - (a[1] as number)).map(([product, volume], idx) => (
+                                {Object.entries(metrics.volumeByProduct).sort((a, b) => (b[1] as number)-(a[1] as number)).map(([product, volume], idx) => (
                                     <div key={product} className="space-y-1">
                                         <div className="flex justify-between text-[11px]">
                                             <span className="text-gray-300 font-medium">{product}</span>
@@ -391,8 +392,8 @@ const DashboardScreen = () => {
                                         </div>
                                         <div className="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
                                             <div
-                                                className={`h-full rounded-full transition-all duration-1000 ease-out custom-gradient-${(idx % 3) + 1}`}
-                                                style={{ width: `${(Number(volume) / Math.max(1, Number(metrics.totalVolume))) * 100}%`, backgroundColor: idx === 0 ? '#3B82F6' : idx === 1 ? '#10B981' : '#F59E0B' }}
+                                                className={`h-full rounded-full transition-all duration-1000 ease-out custom-gradient-${(idx % 3) + 1} `}
+                                                style={{ width: `${(Number(volume) / Math.max(1, Number(metrics.totalVolume))) * 100}% `, backgroundColor: idx === 0 ? '#3B82F6' : idx === 1 ? '#10B981' : '#F59E0B' }}
                                             ></div>
                                         </div>
                                     </div>
@@ -410,9 +411,9 @@ const DashboardScreen = () => {
 
                             <h3 className="text-white font-bold text-sm mb-3 relative z-10">Top Clientes</h3>
                             <div className="flex-1 flex flex-col justify-center gap-3 relative z-10">
-                                {Object.entries(metrics.revenueByClient).sort((a, b) => (b[1] as number) - (a[1] as number)).slice(0, 3).map(([client, revenue], idx) => (
+                                {Object.entries(metrics.revenueByClient).sort((a, b) => (b[1] as number)-(a[1] as number)).slice(0, 3).map(([client, revenue], idx) => (
                                     <div key={client} className="flex items-center gap-2">
-                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black ${idx === 0 ? 'bg-yellow-500/20 text-yellow-500' : idx === 1 ? 'bg-gray-300/20 text-gray-300' : 'bg-orange-400/20 text-orange-400'}`}>
+                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black ${idx === 0 ? 'bg-yellow-500/20 text-yellow-500' : idx === 1 ? 'bg-gray-300/20 text-gray-300' : 'bg-orange-400/20 text-orange-400'} `}>
                                             {idx + 1}
                                         </div>
                                         <div className="flex-1 truncate text-xs text-gray-300 font-medium">{client}</div>
@@ -451,7 +452,7 @@ const MonitorScreen = () => {
 
     return (
         <div className="relative h-screen w-full overflow-hidden flex flex-col bg-background-dark text-slate-100">
-            {/* Background Map Simulation - Fixed at bottom z-0 */}
+            {/* Background Map Simulation-Fixed at bottom z-0 */}
             <div className="absolute inset-0 z-0 map-bg w-full h-full">
                 <div className="absolute top-1/3 left-1/4 w-0.5 h-32 bg-slate-700/50 rotate-45 transform"></div>
                 <div className="absolute top-1/4 right-1/3 w-0.5 h-64 bg-slate-700/50 -rotate-12 transform"></div>
@@ -464,13 +465,13 @@ const MonitorScreen = () => {
                     <path d="M180 450 Q 150 500 100 520" fill="none" stroke="#EF4444" strokeDasharray="4 2" strokeWidth="3"></path>
                 </svg>
 
-                {/* Truck Marker - Centered better */}
+                {/* Truck Marker-Centered better */}
                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center">
-                    <div className={`w-16 h-16 ${selectedUnit ? 'bg-blue-500/20' : 'bg-accent-red/20'} rounded-full flex items-center justify-center ${selectedUnit ? 'animate-pulse' : 'animate-pulse-red'}`}>
-                        <div className={`w-5 h-5 ${selectedUnit ? 'bg-blue-500' : 'bg-accent-red'} rounded-full border-2 border-white dark:border-background-dark shadow-lg`}></div>
+                    <div className={`w-16 h-16 ${selectedUnit ? 'bg-blue-500/20' : 'bg-accent-red/20'} rounded-full flex items-center justify-center ${selectedUnit ? 'animate-pulse' : 'animate-pulse-red'} `}>
+                        <div className={`w-5 h-5 ${selectedUnit ? 'bg-blue-500' : 'bg-accent-red'} rounded-full border-2 border-white dark: border-background-dark shadow-lg`}></div>
                     </div>
                     <div className="bg-card-dark text-[10px] px-3 py-1.5 rounded-lg shadow-xl mt-2 font-mono border border-slate-700 text-white flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full ${selectedUnit ? 'bg-blue-500' : 'bg-accent-red'}`}></span> {selectedUnit ? `Unit ${selectedUnit.truck}` : 'TRUCK-802'}
+                        <span className={`w-2 h-2 rounded-full ${selectedUnit ? 'bg-blue-500' : 'bg-accent-red'} `}></span> {selectedUnit ? `Unit ${selectedUnit.truck} ` : 'TRUCK-802'}
                     </div>
                 </div>
 
@@ -502,9 +503,9 @@ const MonitorScreen = () => {
                 </div>
             </header>
 
-            {/* Main Content Overlay - Constrained width */}
+            {/* Main Content Overlay-Constrained width */}
             <main className="relative z-10 flex-1 flex flex-col justify-between px-4 pb-28 w-full max-w-6xl mx-auto pointer-events-none">
-                {/* Search Bar - Floating below header */}
+                {/* Search Bar-Floating below header */}
                 <div className="w-full flex justify-center mt-2 mb-4 pointer-events-auto relative z-30">
                     <div className="w-full max-w-lg relative group">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -536,7 +537,7 @@ const MonitorScreen = () => {
                                                 <div className="text-sm font-semibold text-white">Unit {unit.truck} <span className="text-slate-500 font-normal">({unit.carrier})</span></div>
                                                 <div className="text-xs text-slate-400">BOL: {unit.bol} • {unit.product}</div>
                                             </div>
-                                            <span className={`text-[10px] px-2 py-0.5 rounded border ${unit.status === 'DONE' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-blue-500/10 text-blue-500 border-blue-500/20'}`}>
+                                            <span className={`text-[10px] px-2 py-0.5 rounded border ${unit.status === 'DONE' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-blue-500/10 text-blue-500 border-blue-500/20'} `}>
                                                 {unit.status}
                                             </span>
                                         </div>
@@ -566,7 +567,7 @@ const MonitorScreen = () => {
                                     </div>
                                 </div>
                                 <div className="flex flex-col items-end">
-                                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded border ${selectedUnit.status === 'DONE' ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'}`}>
+                                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded border ${selectedUnit.status === 'DONE' ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'} `}>
                                         {selectedUnit.status}
                                     </span>
                                     <span className="text-[10px] text-slate-500 mt-1 font-mono">BOL: {selectedUnit.bol}</span>
@@ -776,7 +777,7 @@ const ComplianceScreen = () => {
                     <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-accent-orange/10 rounded-full blur-3xl"></div>
                 </section>
 
-                {/* Status Cards - Fixed layout */}
+                {/* Status Cards-Fixed layout */}
                 <section className="grid grid-cols-2 gap-4">
                     <div className="bg-card-dark p-4 rounded-2xl shadow-sm border border-gray-800 flex flex-col justify-between h-36 relative overflow-hidden group hover:border-gray-700 transition">
                         <div className="flex justify-between items-start z-10">
@@ -853,7 +854,7 @@ const ComplianceScreen = () => {
                                             sale.status === 'POD PENDING' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
                                                 sale.status === 'LOADING' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20 animate-pulse' :
                                                     'bg-gray-500/10 text-gray-400 border-gray-500/20'
-                                        }`}>
+                                        } `}>
                                         {sale.status}
                                     </span>
                                 </div>
@@ -979,22 +980,22 @@ const InvoiceGenerationModal = ({
                                 disabled={sale.invoiced}
                                 onClick={() => !sale.invoiced && onSelectSale(sale)}
                                 className={`w-full text-left rounded-xl p-3 flex items-center justify-between group transition-all border ${sale.invoiced
-                                    ? 'bg-black/20 border-white/5 opacity-60 cursor-not-allowed'
-                                    : 'bg-black/40 hover:bg-black/60 border-white/5 hover:border-green-500/30'
-                                    }`}
+                                        ? 'bg-black/20 border-white/5 opacity-60 cursor-not-allowed'
+                                        : 'bg-black/40 hover:bg-black/60 border-white/5 hover:border-green-500/30'
+                                    } `}
                             >
                                 <div className="flex items-center gap-3">
                                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${sale.invoiced
-                                        ? 'bg-green-900/20 text-green-500'
-                                        : 'bg-gray-800 text-gray-400 group-hover:text-white group-hover:bg-gray-700'
-                                        }`}>
+                                            ? 'bg-green-900/20 text-green-500'
+                                            : 'bg-gray-800 text-gray-400 group-hover:text-white group-hover:bg-gray-700'
+                                        } `}>
                                         <span className="material-symbols-outlined">
                                             {sale.invoiced ? 'check_circle' : (sale.product.includes('Oil') ? 'water_drop' : 'local_shipping')}
                                         </span>
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            <span className={`font-bold text-sm ${sale.invoiced ? 'text-gray-500' : 'text-white'}`}>{sale.customer}</span>
+                                            <span className={`font-bold text-sm ${sale.invoiced ? 'text-gray-500' : 'text-white'} `}>{sale.customer}</span>
                                             <span className="text-[10px] bg-white/10 px-1.5 rounded text-gray-300">BOL: {sale.bol}</span>
                                             {sale.invoiced && (
                                                 <span className="text-[9px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded border border-green-500/30 uppercase font-bold">
@@ -1010,7 +1011,7 @@ const InvoiceGenerationModal = ({
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <div className={`font-mono font-bold text-sm ${sale.invoiced ? 'text-gray-600' : 'text-green-400'}`}>
+                                    <div className={`font-mono font-bold text-sm ${sale.invoiced ? 'text-gray-600' : 'text-green-400'} `}>
                                         ${sale.totalSale.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                                     </div>
                                     <div className="text-[10px] text-gray-500">{sale.gallons.toLocaleString()} gal</div>
@@ -1033,17 +1034,17 @@ const InvoiceContent = ({ data, id }: { data: any, id?: string }) => (
                 <div className="w-32 h-12 bg-gray-200 flex items-center justify-center text-gray-400 font-bold border border-gray-300 mb-2">LOGO</div>
                 <h2 className="font-bold text-xl text-gray-900">ORKA ENERGY S.A. DE C.V.</h2>
                 <p className="text-xs text-gray-600">RFC: OEN123456789</p>
-                <p className="text-xs text-gray-600">Régimen Fiscal: 601 - General de Ley Personas Morales</p>
+                <p className="text-xs text-gray-600">Régimen Fiscal: 601-General de Ley Personas Morales</p>
                 <p className="text-xs text-gray-600">Lugar de Expedición: 66260</p>
             </div>
             <div className="w-1/3 text-right">
                 <div className="border border-gray-300 rounded p-2 bg-gray-50">
                     <h3 className="font-bold text-lg text-gray-800">FACTURA</h3>
-                    <p className="text-sm text-red-600 font-bold">A - 12345</p>
+                    <p className="text-sm text-red-600 font-bold">A-12345</p>
                     <div className="mt-2 text-xs text-left space-y-1">
                         <div className="flex justify-between"><span className="text-gray-500">Folio Fiscal:</span> <span className="font-mono">75A2F...E12D</span></div>
                         <div className="flex justify-between"><span className="text-gray-500">Fecha:</span> <span>{new Date().toLocaleString()}</span></div>
-                        <div className="flex justify-between"><span className="text-gray-500">Tipo:</span> <span>I - Ingreso</span></div>
+                        <div className="flex justify-between"><span className="text-gray-500">Tipo:</span> <span>I-Ingreso</span></div>
                     </div>
                 </div>
             </div>
@@ -1078,7 +1079,7 @@ const InvoiceContent = ({ data, id }: { data: any, id?: string }) => (
                 <tr className="bg-gray-800 text-white">
                     <th className="p-2 text-left w-20">Cant</th>
                     <th className="p-2 text-left w-20">Unidad</th>
-                    <th className="p-2 text-left">Clave Prod/Serv - Descripción</th>
+                    <th className="p-2 text-left">Clave Prod/Serv-Descripción</th>
                     <th className="p-2 text-right w-32">Precio U.</th>
                     <th className="p-2 text-right w-32">Importe</th>
                 </tr>
@@ -1086,10 +1087,10 @@ const InvoiceContent = ({ data, id }: { data: any, id?: string }) => (
             <tbody>
                 <tr className="border-b border-gray-200">
                     <td className="p-2 align-top">{data.gallons.toLocaleString()}</td>
-                    <td className="p-2 align-top text-gray-600">LTR - Litro</td>
+                    <td className="p-2 align-top text-gray-600">LTR-Litro</td>
                     <td className="p-2 align-top">
                         <span className="font-bold block text-gray-900">{data.product}</span>
-                        <span className="text-xs text-gray-500">15101505 - Combustible diesel</span>
+                        <span className="text-xs text-gray-500">15101505-Combustible diesel</span>
                     </td>
                     <td className="p-2 align-top text-right">${data.rate}</td>
                     <td className="p-2 align-top text-right font-bold">${data.totalSale.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
@@ -1112,7 +1113,7 @@ const InvoiceContent = ({ data, id }: { data: any, id?: string }) => (
                 <div className="grid grid-cols-2 gap-4 text-xs">
                     <div>
                         <span className="text-gray-500 block">Forma de Pago</span>
-                        <span className="font-bold">99 - Por definir</span>
+                        <span className="font-bold">99-Por definir</span>
                     </div>
                     <div>
                         <span className="text-gray-500 block">Método de Pago</span>
@@ -1400,7 +1401,7 @@ const BalanceReportModal = ({
                 <div className="flex-1 overflow-y-auto p-8 md:p-12 font-sans bg-slate-50 print:bg-white print:p-0 print:overflow-visible print:h-auto print:static">
                     <div className="max-w-3xl mx-auto space-y-12 print:space-y-0 print:max-w-none print:block">
                         {reports.map((report, idx) => (
-                            <div key={idx} className={`bg-white p-8 md:p-12 shadow-sm border border-slate-200 print:shadow-none print:border-none print:p-0 print:m-0 ${idx > 0 ? 'print:break-before-page' : ''}`}>
+                            <div key={idx} className={`bg-white p-8 md: p-12 shadow-sm border border-slate-200 print: shadow-none print: border-none print: p-0 print: m-0 ${idx > 0 ? 'print:break-before-page' : ''} `}>
                                 {/* PDF Header */}
                                 <div className="flex justify-between items-start border-b-4 border-slate-900 pb-8 mb-8">
                                     <div>
@@ -1450,7 +1451,7 @@ const BalanceReportModal = ({
                                     <div className="bg-slate-900 p-5 rounded-sm border-l-4 border-green-500 col-span-3 md:col-span-1">
                                         <p className="text-[10px] font-bold text-slate-300 uppercase mb-1 text-white/70">Saldo Final (Cierre)</p>
                                         <p className="text-2xl font-black text-white">
-                                            ${(report.openingBalance + report.dailyTotal - report.dailyPayments).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                            ${(report.openingBalance + report.dailyTotal-report.dailyPayments).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                                         </p>
                                     </div>
                                 </div>
@@ -1478,7 +1479,7 @@ const BalanceReportModal = ({
                                                     <td className="py-4 text-right">{sale.gallons.toLocaleString()}</td>
                                                     <td className="py-4 text-right">
                                                         <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded border ${sale.status === 'DONE' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-blue-100 text-blue-700 border-blue-200'
-                                                            }`}>
+                                                            } `}>
                                                             {sale.status}
                                                         </span>
                                                     </td>
@@ -1514,7 +1515,7 @@ const BalanceReportModal = ({
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
                                             {report.todayPayments && report.todayPayments.map((sale: Sale) => (
-                                                <tr key={`pay-${sale.id}`} className="text-slate-700">
+                                                <tr key={`pay-${sale.id} `} className="text-slate-700">
                                                     <td className="py-4 font-mono font-bold">{sale.bol || sale.id.substring(0, 8)}</td>
                                                     <td className="py-4 font-bold">{sale.product}</td>
                                                     <td className="py-4 text-slate-500">{sale.terminal}</td>
@@ -1568,28 +1569,28 @@ const generateCFDI40XML = (data: any) => {
     const serie = "A";
     const uuid = "75A2F2B4-C1E9-4D6C-A7E2-9B9D0E12D5C4"; // Simulated UUID
 
-    return `<?xml version="1.0" encoding="UTF-8"?>
-<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sat.gob.mx/cfd/4 http://www.sat.gob.mx/sitio_internet/cfd/4/cfdv40.xsd" Version="4.0" Serie="${serie}" Folio="${folio}" Fecha="${now}" Sello="abcdef123..." FormaPago="99" NoCertificado="00001000000504465930" Certificado="MIIG..." SubTotal="${subtotal.toFixed(2)}" Moneda="MXN" Total="${total.toFixed(2)}" TipoDeComprobante="I" Exportacion="01" MetodoPago="${data.metodoPago}" LugarExpedicion="66260">
-    <cfdi:Emisor Rfc="OEN123456789" Nombre="ORKA ENERGY S.A. DE C.V." RegimenFiscal="601"/>
-    <cfdi:Receptor Rfc="${data.rfc}" Nombre="${data.customer}" DomicilioFiscalReceptor="66260" RegimenFiscalReceptor="601" UsoCFDI="${data.usoCfdi.split(' - ')[0]}"/>
-    <cfdi:Conceptos>
-        <cfdi:Concepto ClaveProdServ="15101505" NoIdentificacion="FUEL-001" Cantidad="${data.gallons}" ClaveUnidad="LTR" Unidad="Litro" Descripcion="${data.product}" ValorUnitario="${data.rate.toFixed(4)}" Importe="${subtotal.toFixed(2)}" ObjetoImp="02">
-            <cfdi:Impuestos>
-                <cfdi:Traslados>
-                    <cfdi:Traslado Base="${subtotal.toFixed(2)}" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="${iva.toFixed(2)}"/>
-                </cfdi:Traslados>
-            </cfdi:Impuestos>
-        </cfdi:Concepto>
-    </cfdi:Conceptos>
-    <cfdi:Impuestos TotalImpuestosTrasladados="${iva.toFixed(2)}">
-        <cfdi:Traslados>
-            <cfdi:Traslado Base="${subtotal.toFixed(2)}" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="${iva.toFixed(2)}"/>
-        </cfdi:Traslados>
-    </cfdi:Impuestos>
-    <cfdi:Complemento>
-        <tfd:TimbreFiscalDigital xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" xsi:schemaLocation="http://www.sat.gob.mx/TimbreFiscalDigital http://www.sat.gob.mx/sitio_internet/cfd/TimbreFiscalDigital/TimbreFiscalDigitalv11.xsd" Version="1.1" UUID="${uuid}" FechaTimbrado="${now}" RfcProvCertif="SAT970701NN3" SelloCFD="abcdef..." NoCertificadoSAT="00001000000504465028" SelloSAT="xyz123..."/>
-    </cfdi:Complemento>
-</cfdi:Comprobante>`;
+    return `<? xml version = "1.0" encoding = "UTF-8" ?>
+    <cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sat.gob.mx/cfd/4 http://www.sat.gob.mx/sitio_internet/cfd/4/cfdv40.xsd" Version="4.0" Serie="${serie}" Folio="${folio}" Fecha="${now}" Sello="abcdef123..." FormaPago="99" NoCertificado="00001000000504465930" Certificado="MIIG..." SubTotal="${subtotal.toFixed(2)}" Moneda="MXN" Total="${total.toFixed(2)}" TipoDeComprobante="I" Exportacion="01" MetodoPago="${data.metodoPago}" LugarExpedicion="66260">
+        <cfdi:Emisor Rfc="OEN123456789" Nombre="ORKA ENERGY S.A. DE C.V." RegimenFiscal="601" />
+        <cfdi:Receptor Rfc="${data.rfc}" Nombre="${data.customer}" DomicilioFiscalReceptor="66260" RegimenFiscalReceptor="601" UsoCFDI="${data.usoCfdi.split('-')[0]}" />
+        <cfdi:Conceptos>
+            <cfdi:Concepto ClaveProdServ="15101505" NoIdentificacion="FUEL-001" Cantidad="${data.gallons}" ClaveUnidad="LTR" Unidad="Litro" Descripcion="${data.product}" ValorUnitario="${data.rate.toFixed(4)}" Importe="${subtotal.toFixed(2)}" ObjetoImp="02">
+                <cfdi:Impuestos>
+                    <cfdi:Traslados>
+                        <cfdi:Traslado Base="${subtotal.toFixed(2)}" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="${iva.toFixed(2)}" />
+                    </cfdi:Traslados>
+                </cfdi:Impuestos>
+            </cfdi:Concepto>
+        </cfdi:Conceptos>
+        <cfdi:Impuestos TotalImpuestosTrasladados="${iva.toFixed(2)}">
+            <cfdi:Traslados>
+                <cfdi:Traslado Base="${subtotal.toFixed(2)}" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="${iva.toFixed(2)}" />
+            </cfdi:Traslados>
+        </cfdi:Impuestos>
+        <cfdi:Complemento>
+            <tfd:TimbreFiscalDigital xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" xsi:schemaLocation="http://www.sat.gob.mx/TimbreFiscalDigital http://www.sat.gob.mx/sitio_internet/cfd/TimbreFiscalDigital/TimbreFiscalDigitalv11.xsd" Version="1.1" UUID="${uuid}" FechaTimbrado="${now}" RfcProvCertif="SAT970701NN3" SelloCFD="abcdef..." NoCertificadoSAT="00001000000504465028" SelloSAT="xyz123..." />
+        </cfdi:Complemento>
+    </cfdi:Comprobante>`;
 };
 
 const downloadFile = (filename: string, content: string, contentType: string) => {
@@ -1608,10 +1609,10 @@ const downloadFile = (filename: string, content: string, contentType: string) =>
 const CFDIForm = ({ initialData, onCancel }: { initialData?: Sale | null, onCancel: () => void }) => {
     // Form State
     const [formData, setFormData] = useState({
-        customer: initialData?.customer ? `${initialData.customer} S.A. de C.V.` : '',
+        customer: initialData?.customer ? `${initialData.customer} S.A.de C.V.` : '',
         rfc: 'XAXX010101000',
-        usoCfdi: 'G03 - Gastos en general',
-        regimen: '601 - General de Ley Personas Morales',
+        usoCfdi: 'G03-Gastos en general',
+        regimen: '601-General de Ley Personas Morales',
         metodoPago: 'PUE',
         product: initialData?.product || '',
         gallons: initialData?.gallons || 0,
@@ -1720,8 +1721,8 @@ const CFDIForm = ({ initialData, onCancel }: { initialData?: Sale | null, onCanc
                                     onChange={(e) => handleChange('usoCfdi', e.target.value)}
                                     className="w-full bg-black/30 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-green-500 outline-none transition"
                                 >
-                                    <option>G03 - Gastos en general</option>
-                                    <option>P01 - Por definir</option>
+                                    <option>G03-Gastos en general</option>
+                                    <option>P01-Por definir</option>
                                 </select>
                             </div>
                             <div className="space-y-1">
@@ -1731,7 +1732,7 @@ const CFDIForm = ({ initialData, onCancel }: { initialData?: Sale | null, onCanc
                                     onChange={(e) => handleChange('regimen', e.target.value)}
                                     className="w-full bg-black/30 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-green-500 outline-none transition"
                                 >
-                                    <option>601 - General de Ley Personas Morales</option>
+                                    <option>601-General de Ley Personas Morales</option>
                                 </select>
                             </div>
                             <div className="space-y-1">
@@ -1741,8 +1742,8 @@ const CFDIForm = ({ initialData, onCancel }: { initialData?: Sale | null, onCanc
                                     onChange={(e) => handleChange('metodoPago', e.target.value)}
                                     className="w-full bg-black/30 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-green-500 outline-none transition"
                                 >
-                                    <option value="PUE">PUE - Pago en una sola exhibición</option>
-                                    <option value="PPD">PPD - Pago en parcialidades o diferido</option>
+                                    <option value="PUE">PUE-Pago en una sola exhibición</option>
+                                    <option value="PPD">PPD-Pago en parcialidades o diferido</option>
                                 </select>
                             </div>
                         </div>
@@ -1927,17 +1928,17 @@ const FinanceScreen = ({
     // Helper functions for data analysis wrapped to use the current 'sales' state
     const currentGetClientBalances = (filter: string) => {
         const dates = sales.map(s => s.date).sort();
-        const latestDate = dates[dates.length - 1];
+        const latestDate = dates[dates.length-1];
         const clients = Array.from(new Set(sales.map(s => s.customer)));
         const results = clients.map(client => {
             const clientSales = sales.filter(s => s.customer === client);
             const currentTotal = clientSales.reduce((acc, s) => acc + s.totalSale, 0);
             const currentPaid = clientSales.reduce((acc, s) => acc + (s.paidAmount || 0), 0);
-            const currentPending = currentTotal - currentPaid;
+            const currentPending = currentTotal-currentPaid;
             const prevSales = clientSales.filter(s => s.date < latestDate);
             const prevTotal = prevSales.reduce((acc, s) => acc + s.totalSale, 0);
             const prevPaid = prevSales.reduce((acc, s) => acc + (s.paidAmount || 0), 0);
-            const prevBalance = prevTotal - prevPaid;
+            const prevBalance = prevTotal-prevPaid;
             return {
                 client,
                 currentPending,
@@ -1951,7 +1952,7 @@ const FinanceScreen = ({
 
     const currentGetClientCollectionDetail = (clientName: string) => {
         const dates = sales.map(s => s.date).sort();
-        const referenceDateStr = dates[dates.length - 1];
+        const referenceDateStr = dates[dates.length-1];
         const clientSales = sales.filter(s => s.customer === clientName);
         const details = clientSales.map(sale => {
             const loadDate = new Date(sale.date);
@@ -1986,7 +1987,7 @@ const FinanceScreen = ({
     const partialPaidCount = filteredSales.filter(s => s.paymentStatus === 'PARTIAL').length;
 
     // 3. Pending
-    const pendingAmount = totalNominatedAmount - totalPaidAmount;
+    const pendingAmount = totalNominatedAmount-totalPaidAmount;
 
     // 4. Previous Day Balance (Total)
     const totalPrevBalance = clientBalances.reduce((acc, curr) => acc + curr.prevBalance, 0);
@@ -2071,13 +2072,13 @@ const FinanceScreen = ({
                     <div className="mt-4 flex gap-1 p-1 bg-gray-900 rounded-xl border border-gray-800">
                         <button
                             onClick={() => { setActiveTab('balances'); setShowCFDIForm(false); }}
-                            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'balances' ? 'bg-card-dark shadow-sm text-green-400 border border-gray-700' : 'text-gray-500 hover:text-gray-300'}`}
+                            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'balances' ? 'bg-card-dark shadow-sm text-green-400 border border-gray-700' : 'text-gray-500 hover:text-gray-300'} `}
                         >
                             Balances (CXC/CXP)
                         </button>
                         <button
                             onClick={() => setActiveTab('invoicing')}
-                            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'invoicing' ? 'bg-card-dark shadow-sm text-green-400 border border-gray-700' : 'text-gray-500 hover:text-gray-300'}`}
+                            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'invoicing' ? 'bg-card-dark shadow-sm text-green-400 border border-gray-700' : 'text-gray-500 hover:text-gray-300'} `}
                         >
                             Facturación 4.0
                         </button>
@@ -2131,7 +2132,7 @@ const FinanceScreen = ({
                                     <span className="text-xs text-gray-500 font-normal ml-1">MXN</span>
                                 </div>
                                 <div className="mt-2 w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
-                                    <div className="bg-green-500 h-full rounded-full" style={{ width: `${paidPercentage}%` }}></div>
+                                    <div className="bg-green-500 h-full rounded-full" style={{ width: `${paidPercentage}% ` }}></div>
                                 </div>
                                 <div className="mt-2 flex justify-between items-end">
                                     <div className="text-[10px] text-gray-400">{paidPercentage.toFixed(1)}%</div>
@@ -2185,16 +2186,16 @@ const FinanceScreen = ({
 
                             <div className="space-y-4">
                                 {clientBalances.map((data) => (
-                                    <div key={data.client} className={`bg-card-dark p-4 rounded-2xl border ${data.status === 'Blocked' ? 'border-red-500/20 shadow-[0_0_20px_rgba(239,68,68,0.05)]' : 'border-gray-800'} shadow-sm relative overflow-hidden group transition-all duration-300 hover:border-gray-700`}>
+                                    <div key={data.client} className={`bg-card-dark p-4 rounded-2xl border ${data.status === 'Blocked' ? 'border-red-500/20 shadow-[0_0_20px_rgba(239,68,68,0.05)]' : 'border-gray-800'} shadow-sm relative overflow-hidden group transition-all duration-300 hover: border-gray-700`}>
                                         {data.status === 'Blocked' && <div className="absolute top-0 left-0 w-1.5 h-full bg-red-500"></div>}
                                         <div className="flex justify-between items-center mb-4">
                                             <div className="flex items-center gap-3">
-                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold border ${data.status === 'Blocked' ? 'bg-red-900/30 text-red-400 border-red-500/20' : 'bg-blue-900/30 text-blue-400 border-blue-500/20'}`}>
+                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold border ${data.status === 'Blocked' ? 'bg-red-900/30 text-red-400 border-red-500/20' : 'bg-blue-900/30 text-blue-400 border-blue-500/20'} `}>
                                                     {data.client.substring(0, 2).toUpperCase()}
                                                 </div>
                                                 <div>
                                                     <h4 className="font-semibold text-sm text-white group-hover:text-primary transition-colors">{data.client}</h4>
-                                                    <p className={`text-[10px] flex items-center gap-1 font-bold uppercase tracking-tight ${data.status === 'Blocked' ? 'text-red-500' : 'text-green-500'}`}>
+                                                    <p className={`text-[10px] flex items-center gap-1 font-bold uppercase tracking-tight ${data.status === 'Blocked' ? 'text-red-500' : 'text-green-500'} `}>
                                                         {data.status === 'Blocked' ? <span className="material-symbols-outlined text-[10px]">block</span> : <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>}
                                                         {data.status}
                                                     </p>
@@ -2207,7 +2208,7 @@ const FinanceScreen = ({
                                                 </div>
                                                 <button
                                                     onClick={() => handleViewDetail(data.client)}
-                                                    className={`text-[10px] h-fit self-center px-4 py-2 rounded-xl font-bold transition-all active:scale-95 ${data.status === 'Blocked' ? 'bg-red-500 text-white shadow-lg shadow-red-900/20 hover:bg-red-600' : 'bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700'}`}
+                                                    className={`text-[10px] h-fit self-center px-4 py-2 rounded-xl font-bold transition-all active: scale-95 ${data.status === 'Blocked' ? 'bg-red-500 text-white shadow-lg shadow-red-900/20 hover:bg-red-600' : 'bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700'} `}
                                                 >
                                                     {data.status === 'Blocked' ? 'COLLECT' : 'DETAILS'}
                                                 </button>
@@ -2221,7 +2222,7 @@ const FinanceScreen = ({
                                                     <span className="text-white font-mono">${data.currentPending.toLocaleString()} / <span className="opacity-50">${data.limit.toLocaleString()}</span></span>
                                                 </div>
                                                 <div className="relative h-2 bg-gray-800/50 rounded-full overflow-hidden border border-white/5">
-                                                    <div className={`absolute top-0 left-0 h-full rounded-full transition-all duration-1000 ${data.status === 'Blocked' ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${Math.min((data.currentPending / data.limit) * 100, 100)}%` }}></div>
+                                                    <div className={`absolute top-0 left-0 h-full rounded-full transition-all duration-1000 ${data.status === 'Blocked' ? 'bg-red-500' : 'bg-blue-500'} `} style={{ width: `${Math.min((data.currentPending / data.limit) * 100, 100)}% ` }}></div>
                                                 </div>
                                             </div>
 
@@ -2291,11 +2292,11 @@ const FinanceScreen = ({
                                         <div className="grid grid-cols-2 gap-2 mb-3">
                                             <div className="bg-black/30 p-2 rounded border border-white/5">
                                                 <div className="text-[9px] text-gray-500">Uso CFDI</div>
-                                                <div className="text-xs text-gray-300">G03 - Gastos en general</div>
+                                                <div className="text-xs text-gray-300">G03-Gastos en general</div>
                                             </div>
                                             <div className="bg-black/30 p-2 rounded border border-white/5">
                                                 <div className="text-[9px] text-gray-500">Método Pago</div>
-                                                <div className="text-xs text-gray-300">PPD - Parcialidades</div>
+                                                <div className="text-xs text-gray-300">PPD-Parcialidades</div>
                                             </div>
                                         </div>
                                         <div className="flex gap-2">
@@ -2343,11 +2344,43 @@ const FinanceScreen = ({
 // --- Main App Component ---
 
 const App = () => {
-    const [currentSales, setCurrentSales] = useState<Sale[]>(initialSalesData);
+    const [currentSales, setCurrentSales] = useState<Sale[]>([]);
+    const [loading, setLoading] = useState(true);
     const [userRole, setUserRole] = useState<UserRole | null>(null);
+
+    useEffect(() => {
+        const loadInitialData = async () => {
+            try {
+                setLoading(true);
+                const sales = await supabaseService.getSales();
+                setCurrentSales(sales);
+            } catch (error) {
+                console.error('Error loading sales:', error);
+                // Fallback to mock data if Supabase fails (optional, good for demo)
+                setCurrentSales(initialSalesData);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (userRole) {
+            loadInitialData();
+        }
+    }, [userRole]);
 
     if (!userRole) {
         return <LoginScreen onLogin={(role) => setUserRole(role)} />;
+    }
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-background-dark flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-gray-400 text-sm font-medium animate-pulse">Iniciando plataforma...</p>
+                </div>
+            </div>
+        );
     }
 
     const handleLogout = () => {
