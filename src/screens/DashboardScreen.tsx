@@ -1,22 +1,63 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getMetrics, Sale } from '../../data';
+import { useSales } from '../hooks/useSales';
 import truckImage from '../../public/orka_fuel_tanker.png';
-import logoBlanco from '../../logo/orka_mexico/ORKA-MEXICO-BLANCO.png';
 
-// --- Screen 1: Executive Dashboard ---
+const ACTIVE_STATUSES = new Set(['LOADING', 'ON TRACK', 'BOL UPDATED', 'POD PENDING', 'APPROVED']);
 
 const DashboardScreen = () => {
     const navigate = useNavigate();
+    const { sales, loading } = useSales();
     const [selectedDateFilter, setSelectedDateFilter] = useState<string>('ALL');
     const [selectedClientFilter, setSelectedClientFilter] = useState<string>('ALL');
     const [selectedProductFilter, setSelectedProductFilter] = useState<string>('ALL');
 
-    const metrics = useMemo(() => getMetrics({
-        date: selectedDateFilter,
-        client: selectedClientFilter,
-        product: selectedProductFilter
-    }), [selectedDateFilter, selectedClientFilter, selectedProductFilter]);
+    const metrics = useMemo(() => {
+        const filtered = sales.filter(s => {
+            if (selectedDateFilter !== 'ALL' && s.date !== selectedDateFilter) return false;
+            if (selectedClientFilter !== 'ALL' && s.customer !== selectedClientFilter) return false;
+            if (selectedProductFilter !== 'ALL' && s.product !== selectedProductFilter) return false;
+            return true;
+        });
+
+        const statusCounts: Record<string, number> = {};
+        const volumeByProduct: Record<string, number> = {};
+        const revenueByProduct: Record<string, number> = {};
+        const revenueByClient: Record<string, number> = {};
+        let totalVolume = 0;
+
+        for (const s of filtered) {
+            statusCounts[s.status] = (statusCounts[s.status] || 0) + 1;
+            const gal = s.gallons || 0;
+            volumeByProduct[s.product] = (volumeByProduct[s.product] || 0) + gal;
+            totalVolume += gal;
+            revenueByProduct[s.product] = (revenueByProduct[s.product] || 0) + s.totalSale;
+            revenueByClient[s.customer] = (revenueByClient[s.customer] || 0) + s.totalSale;
+        }
+
+        return {
+            statusCounts,
+            totalOrdersCount: filtered.length,
+            activeFleet: filtered.filter(s => ACTIVE_STATUSES.has(s.status)).length,
+            volumeByProduct,
+            revenueByProduct,
+            revenueByClient,
+            totalVolume,
+            availableClients: Array.from(new Set(sales.map(s => s.customer))).sort(),
+            availableProducts: Array.from(new Set(sales.map(s => s.product))).sort(),
+        };
+    }, [sales, selectedDateFilter, selectedClientFilter, selectedProductFilter]);
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-background-dark flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-gray-400 text-sm animate-pulse">Cargando dashboard...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="relative min-h-screen flex flex-col bg-background-dark pb-32 overflow-x-hidden">
@@ -59,7 +100,7 @@ const DashboardScreen = () => {
                                 type="date"
                                 value={selectedDateFilter === 'ALL' ? '' : selectedDateFilter}
                                 onChange={(e) => setSelectedDateFilter(e.target.value || 'ALL')}
-                                className={`bg-transparent text-xs pl-11 pr-4 py-2 outline-none cursor-pointer min-w-[150px] font-medium transition-all hover:bg-white/5 rounded-full border border-transparent hover:border-white/10 focus:bg-white/10 focus:border-primary/50 relative z-0 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer ${selectedDateFilter === 'ALL' ? 'text-transparent' : 'text-white'} `}
+                                className={`bg-transparent text-xs pl-11 pr-4 py-2 outline-none cursor-pointer min-w-[150px] font-medium transition-all hover:bg-white/5 rounded-full border border-transparent hover:border-white/10 focus:bg-white/10 focus:border-primary/50 relative z-0 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer ${selectedDateFilter === 'ALL' ? 'text-transparent' : 'text-white'}`}
                             />
                         </div>
 
@@ -114,7 +155,6 @@ const DashboardScreen = () => {
             <section className="relative min-h-[500px] h-[55vh] w-full bg-[#050505] overflow-hidden flex flex-col items-center justify-center pt-20">
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-gray-800/10 via-black to-black"></div>
 
-                {/* Truck Visual Container-Centered and Contained */}
                 <div className="relative z-10 w-full max-w-5xl mx-auto flex items-center justify-center px-4 h-full">
                     {/* Floating Title */}
                     <div className="absolute top-10 left-6 lg:left-0 z-20">
@@ -143,8 +183,8 @@ const DashboardScreen = () => {
                             </div>
                             <div className="mt-2 w-full bg-gray-800 h-1 rounded-full overflow-hidden relative z-10">
                                 <div
-                                    className="bg-green-500 h-full w-full opacity-80 group-hover:opacity-100 transition-opacity"
-                                    style={{ width: `${Math.min(100, ((metrics.statusCounts['DONE'] || 0) / 10) * 100)}% ` }}
+                                    className="bg-green-500 h-full opacity-80 group-hover:opacity-100 transition-opacity"
+                                    style={{ width: `${Math.min(100, ((metrics.statusCounts['DONE'] || 0) / Math.max(1, metrics.totalOrdersCount)) * 100)}%` }}
                                 ></div>
                             </div>
                             <div className="text-[10px] text-right text-green-400 mt-1 font-medium relative z-10">Completadas</div>
@@ -163,12 +203,11 @@ const DashboardScreen = () => {
             </section>
 
             {/* Metrics Grid */}
-            <section className="flex-1 bg-background-light dark:bg-[#0f0f0f] rounded-t-[2.5rem] -mt-10 z-30 relative shadow-[0_-10px_60px_rgba(0,0,0,0.7)] overflow-hidden border-t border-white/5">
+            <section className="flex-1 bg-background-light rounded-t-[2.5rem] -mt-10 z-30 relative shadow-[0_-10px_60px_rgba(0,0,0,0.7)] overflow-hidden border-t border-white/5">
                 <div className="w-full max-w-5xl mx-auto p-6 space-y-4 pt-8">
-                    {/* Bento Grid Layout */}
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-5 h-full auto-rows-[160px]">
 
-                        {/* Panel 1: Completion Gauge (Large Square, 4x4) */}
+                        {/* Panel 1: Completion Gauge */}
                         <div className="md:col-span-5 md:row-span-2 bg-gradient-to-br from-card-dark to-[#1a1a1a] p-6 rounded-[2rem] shadow-xl border border-white/5 relative overflow-hidden group flex flex-col justify-between animate-in slide-in-from-bottom-4 duration-500 delay-100 fill-mode-both">
                             <div className="absolute -right-10 -top-10 w-40 h-40 bg-primary/10 rounded-full blur-3xl group-hover:bg-primary/20 transition-all duration-700"></div>
 
@@ -183,13 +222,9 @@ const DashboardScreen = () => {
                             </div>
 
                             <div className="flex-1 flex items-center justify-center relative mt-4 z-10">
-                                {/* SVG Gauge */}
                                 <div className="relative w-40 h-40">
                                     <svg className="w-full h-full transform -rotate-90">
-                                        <circle
-                                            cx="80" cy="80" fill="none" r="68"
-                                            stroke="rgba(255,255,255,0.05)" strokeWidth="12"
-                                        ></circle>
+                                        <circle cx="80" cy="80" fill="none" r="68" stroke="rgba(255,255,255,0.05)" strokeWidth="12"></circle>
                                         <circle
                                             cx="80" cy="80" fill="none" r="68"
                                             stroke="#10B981"
@@ -207,21 +242,19 @@ const DashboardScreen = () => {
                             </div>
                         </div>
 
-                        {/* Panel 2: Estatus Pipeline (Wide Rect, 7x1) */}
+                        {/* Panel 2: Flota Activa */}
                         <div className="md:col-span-7 md:row-span-1 bg-card-dark p-6 rounded-[2rem] shadow-xl border border-white/5 relative overflow-hidden flex flex-col justify-center animate-in slide-in-from-bottom-4 duration-500 delay-200 fill-mode-both">
                             <div className="flex justify-between items-center mb-4">
                                 <h3 className="text-white font-bold text-sm">Flota Activa <span className="text-gray-500 font-normal">({metrics.activeFleet})</span></h3>
                             </div>
 
                             <div className="relative w-full h-16 flex items-center">
-                                {/* Connecting Line */}
                                 <div className="absolute left-[10%] right-[10%] h-0.5 bg-gray-800 top-1/2 -translate-y-1/2 z-0"></div>
                                 <div
                                     className="absolute left-[10%] h-0.5 bg-gradient-to-r from-blue-500 to-green-500 top-1/2 -translate-y-1/2 z-0 transition-all duration-1000"
-                                    style={{ width: `${Math.min(80, (metrics.activeFleet / 15) * 80)}% ` }} // simulated progress
+                                    style={{ width: `${Math.min(80, (metrics.activeFleet / 15) * 80)}%` }}
                                 ></div>
 
-                                {/* Nodes */}
                                 <div className="w-full flex justify-between relative z-10 px-4">
                                     <div className="flex flex-col items-center gap-2">
                                         <div className="w-4 h-4 rounded-full bg-blue-500 border-4 border-card-dark shadow-[0_0_15px_rgba(59,130,246,0.5)] animate-pulse"></div>
@@ -239,7 +272,7 @@ const DashboardScreen = () => {
                             </div>
                         </div>
 
-                        {/* Panel 3: Productos Breakdown (Square, 4x1) */}
+                        {/* Panel 3: Productos Breakdown */}
                         <div className="md:col-span-4 md:row-span-1 bg-card-dark p-5 rounded-[2rem] shadow-xl border border-white/5 flex flex-col justify-between animate-in slide-in-from-bottom-4 duration-500 delay-300 fill-mode-both">
                             <h3 className="text-white font-bold text-sm mb-3">Galones por Producto</h3>
                             <div className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar">
@@ -251,28 +284,26 @@ const DashboardScreen = () => {
                                         </div>
                                         <div className="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
                                             <div
-                                                className={`h-full rounded-full transition-all duration-1000 ease-out custom-gradient-${(idx % 3) + 1} `}
-                                                style={{ width: `${(Number(volume) / Math.max(1, Number(metrics.totalVolume))) * 100}% `, backgroundColor: idx === 0 ? '#3B82F6' : idx === 1 ? '#10B981' : '#F59E0B' }}
+                                                className="h-full rounded-full transition-all duration-1000 ease-out"
+                                                style={{ width: `${(Number(volume) / Math.max(1, Number(metrics.totalVolume))) * 100}%`, backgroundColor: idx === 0 ? '#3B82F6' : idx === 1 ? '#10B981' : '#F59E0B' }}
                                             ></div>
                                         </div>
                                     </div>
                                 ))}
-                                {Object.keys(metrics.revenueByProduct).length === 0 && (
+                                {Object.keys(metrics.volumeByProduct).length === 0 && (
                                     <div className="text-xs text-gray-500 h-full flex items-center justify-center italic">Sin datos</div>
                                 )}
                             </div>
                         </div>
 
-                        {/* Panel 4: Top Clientes (Small Rect, 3x1) */}
+                        {/* Panel 4: Top Clientes */}
                         <div className="md:col-span-3 md:row-span-1 bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] p-5 rounded-[2rem] shadow-xl border border-white/5 flex flex-col animate-in slide-in-from-bottom-4 duration-500 delay-400 fill-mode-both relative overflow-hidden">
-                            {/* Decorative mesh */}
                             <div className="absolute -left-10 -bottom-10 w-32 h-32 bg-accent-orange/10 rounded-full blur-2xl"></div>
-
                             <h3 className="text-white font-bold text-sm mb-3 relative z-10">Top Clientes</h3>
                             <div className="flex-1 flex flex-col justify-center gap-3 relative z-10">
                                 {Object.entries(metrics.revenueByClient).sort((a, b) => (b[1] as number) - (a[1] as number)).slice(0, 3).map(([client, revenue], idx) => (
                                     <div key={client} className="flex items-center gap-2">
-                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black ${idx === 0 ? 'bg-yellow-500/20 text-yellow-500' : idx === 1 ? 'bg-gray-300/20 text-gray-300' : 'bg-orange-400/20 text-orange-400'} `}>
+                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black ${idx === 0 ? 'bg-yellow-500/20 text-yellow-500' : idx === 1 ? 'bg-gray-300/20 text-gray-300' : 'bg-orange-400/20 text-orange-400'}`}>
                                             {idx + 1}
                                         </div>
                                         <div className="flex-1 truncate text-xs text-gray-300 font-medium">{client}</div>
