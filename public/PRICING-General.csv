@@ -1,0 +1,87 @@
+﻿Product,TERMINAL,PROD,Price,date,Supplier,Supplier Cost $,Doc,Final Price
+ULSD,PORT OF BROWNSVILLE,ULSD,$25600.00,5/26/2024 9:27pm,,,,$0.0050
+ULSD,PHARR,ULSD,$27114.00,5/26/2024 9:27pm,,,,$0.0050
+ULSD,LAREDO,ULSD,$28257.00,5/26/2024 9:27pm,,,,$0.0050
+ULSD,EAGLE PASS,ULSD,$28757.00,5/26/2024 9:32pm,,,,$0.0050
+GAS 87,PORT OF BROWNSVILLE,GAS 87,$25300.00,5/26/2024 9:39pm,,,,$0.0050
+Naphtha,PORT OF BROWNSVILLE,Naphtha,$18300.00,5/26/2024 9:40pm,,,,$0.0050
+Naphtha Nixon,PORT OF BROWNSVILLE,Naphtha Nixon,,5/26/2024 9:40pm,,,,$0.0050
+Fuel Grade Ethanol,PORT OF BROWNSVILLE,Fuel Grade Ethanol,,5/26/2024 9:40pm,,,,$0.0050
+Fuel Grade Ethanol,"TUCSON, AZ",Fuel Grade Ethanol,,5/26/2024 9:47pm,,,,$0.0050
+ULSD,PHARR,ULSD,$21000.00,5/26/2024 9:50pm,,,,$0.0050
+ULSD,PORT OF BROWNSVILLE,ULSD,$54000.00,5/27/2024 3:57pm,,,,$0.0050
+GAS 87,PORT OF BROWNSVILLE,GAS 87,$33000.00,5/27/2024 3:59pm,,,,$0.0050
+Naphtha,PORT OF BROWNSVILLE,Naphtha,$35000.00,5/27/2024 3:59pm,,,,$0.0050
+Naphtha Nixon,PORT OF BROWNSVILLE,Naphtha Nixon,$66000.00,5/27/2024 3:59pm,,,,$0.0050
+Fuel Grade Ethanol,PORT OF BROWNSVILLE,Fuel Grade Ethanol,$32000.00,5/27/2024 4:00pm,,,,$0.0050
+Fuel Grade Ethanol,LAREDO,Fuel Grade Ethanol,$35000.00,5/27/2024 3:57pm,,,,$0.0050
+ULSD,LAREDO,ULSD,$58000.00,5/27/2024 4:09pm,,,,$0.0050
+Naphtha Nixon,EAGLE PASS,Naphtha Nixon,$62000.00,5/27/2024 3:57pm,,,,$0.0050
+GAS 87,PHARR,GAS 87,$52000.00,5/27/2024 3:57pm,,,,$0.0050
+ULSD,"TUCSON, AZ",ULSD,$22000.00,5/27/2024 3:59pm,,,,$0.0050
+Naphtha,LAREDO,Naphtha,$44000.00,5/27/2024 4:15pm,,,,$0.0050
+Naphtha,PHARR,Naphtha,$59000.00,5/27/2024 4:25pm,,,,$0.0050
+ULSD,PORT OF BROWNSVILLE,ULSD,,7/11/2024 3:02pm,,,,$0.0050
+GAS 87,PHARR,GAS 87,,7/11/2024 3:02pm,,,,$0.0050
+Naphtha,LAREDO,Naphtha,,7/11/2024 3:02pm,,,,$0.0050
+Naphtha Nixon,EAGLE PASS,Naphtha Nixon,,7/11/2024 3:05pm,,,,$0.0050
+Fuel Grade Ethanol,,Fuel Grade Ethanol,,7/11/2024 3:05pm,,,,$0.0050
+GAS 87,PHARR,GAS 87,$26733.00,7/11/2024 4:18pm,,,,$0.0050
+Naphtha,PHARR,Naphtha,$19690.00,7/11/2024 4:18pm,,,,$0.0050
+Naphtha Nixon,PHARR,Naphtha Nixon,,7/11/2024 4:18pm,,,,$0.0050
+Fuel Grade Ethanol,PHARR,Fuel Grade Ethanol,,7/11/2024 4:18pm,,,,$0.0050
+GAS 87,LAREDO,GAS 87,$27800.00,7/11/2024 4:18pm,,,,$0.0050
+Naphtha,LAREDO,Naphtha,$20715.00,7/11/2024 4:18pm,,,,$0.0050
+Naphtha Nixon,LAREDO,Naphtha Nixon,$18951.00,7/11/2024 4:18pm,,,,$0.0050
+Fuel Grade Ethanol,LAREDO,Fuel Grade Ethanol,$22800.00,7/11/2024 4:18pm,,,,$0.0050
+GAS 87,EAGLE PASS,GAS 87,$28267.00,7/11/2024 4:18pm,,,,$0.0050
+Naphtha,EAGLE PASS,Naphtha,$21164.00,7/11/2024 4:18pm,,,,$0.0050
+Naphtha Nixon,EAGLE PASS,Naphtha Nixon,$18951.00,7/11/2024 4:18pm,,,,$0.0050
+Fuel Grade Ethanol,EAGLE PASS,Fuel Grade Ethanol,$22800.00,7/11/2024 4:18pm,,,,$0.0050
+Naphtha,LAREDO,Naphtha,$25.00,7/14/2024 1:01am,,,,$0.0050
+GAS 87,LAREDO,GAS 87,$25.00,7/14/2024 1:01am,,,,$0.0050
+Fuel Grade Ethanol,EAGLE PASS,Fuel Grade Ethanol,$25.00,7/14/2024 1:03am,,,,$0.0050
+Fuel Grade Ethanol,LAREDO,Fuel Grade Ethanol,$25.00,7/14/2024 1:03am,,,,$0.0050
+Naphtha,EAGLE PASS,Naphtha,$25.00,7/14/2024 1:03am,,,,$0.0050
+ULSD,EAGLE PASS,ULSD,$25.00,7/14/2024 1:03am,,,,$0.0050
+Naphtha,EAGLE PASS,Naphtha,$25.00,7/14/2024 1:04am,,,,$0.0050
+GAS 87,EAGLE PASS,GAS 87,$25.00,7/15/2024 7:00pm,,,,$0.0050
+ULSD,EAGLE PASS,ULSD,$182.00,7/16/2024 2:50am,,,,$0.0050
+Naphtha,EAGLE PASS,Naphtha,$144.00,7/16/2024 2:50am,,,,$0.0050
+Fuel Grade Ethanol,EAGLE PASS,Fuel Grade Ethanol,$125.00,7/16/2024 2:50am,,,,$0.0050
+Fuel Grade Ethanol,LAREDO,Fuel Grade Ethanol,$25.00,7/15/2024 7:00pm,,,,$0.0050
+GAS 87,"TUCSON, AZ",GAS 87,$14.00,7/16/2024 1:25am,,,,$0.0050
+ULSD,"TUCSON, AZ",ULSD,$11.00,7/16/2024 2:19am,,,,$0.0050
+Naphtha,"TUCSON, AZ",Naphtha,$112.00,7/16/2024 2:19am,,,,$0.0050
+Fuel Grade Ethanol,"TUCSON, AZ",Fuel Grade Ethanol,$123.00,7/16/2024 2:19am,,,,$0.0050
+GAS 87,PORT OF BROWNSVILLE,GAS 87,$22.00,7/16/2024 1:33am,,,,$0.0050
+ULSD,PORT OF BROWNSVILLE,ULSD,$23.00,7/16/2024 1:33am,,,,$0.0050
+Naphtha,PORT OF BROWNSVILLE,Naphtha,$15.00,7/16/2024 2:19am,,,,$0.0050
+Fuel Grade Ethanol,PORT OF BROWNSVILLE,Fuel Grade Ethanol,$16.00,7/16/2024 2:19am,,,,$0.0050
+GAS 87,LAREDO,GAS 87,$42.00,7/16/2024 1:33am,,,,$0.0050
+ULSD,LAREDO,ULSD,$25.00,7/16/2024 2:18am,,,,$0.0050
+Naphtha,LAREDO,Naphtha,$22.00,7/16/2024 2:18am,,,,$0.0050
+Fuel Grade Ethanol,LAREDO,Fuel Grade Ethanol,$18.00,7/16/2024 2:18am,,,,$0.0050
+GAS 87,PHARR,GAS 87,$15.00,7/16/2024 4:01am,,,,$0.0050
+ULSD,PHARR,ULSD,$16.00,7/16/2024 4:01am,,,,$0.0050
+Naphtha,PHARR,Naphtha,$42.00,7/16/2024 4:01am,,,,$0.0050
+Fuel Grade Ethanol,PHARR,Fuel Grade Ethanol,$25.00,7/16/2024 4:01am,,,,$0.0050
+GAS 87,El Paso (Holly),GAS 87,$54.00,7/16/2024 4:05am,,,,$0.0050
+ULSD,El Paso (Holly),ULSD,$25.00,7/16/2024 4:06am,,,,$0.0050
+Naphtha,El Paso (Holly),Naphtha,$35.00,7/16/2024 4:06am,,,,$0.0050
+Fuel Grade Ethanol,El Paso (Holly),Fuel Grade Ethanol,$25.00,7/16/2024 4:13am,,$0.00,,$0.0050
+GAS 87,PORT OF BROWNSVILLE,GAS 87,$25.00,7/16/2024 6:50pm,,,,$0.0050
+GAS 87,LAREDO,GAS 87,$25.00,7/16/2024 6:52pm,,,,$0.0050
+Fuel Grade Ethanol,"TUCSON, AZ",Fuel Grade Ethanol,$25.00,7/16/2024 7:30pm,,,,$0.0050
+ULSD,"TUCSON, AZ",ULSD,$25.00,7/16/2024 7:35pm,,,,$0.0050
+Fuel Grade Ethanol,El Paso (Holly),Fuel Grade Ethanol,$25.00,7/17/2024 5:24am,,,,$0.0050
+GAS 87,El Paso (Holly),GAS 87,$25.00,7/17/2024 6:24pm,,,,$0.0050
+GAS 87,El Paso (Holly),GAS 87,$25.00,7/18/2024 2:50am,,,,$0.0050
+Fuel Grade Ethanol,LAREDO,Fuel Grade Ethanol,$25.00,7/18/2024 2:50am,,,,$0.0050
+Naphtha,EAGLE PASS,Naphtha,$33.00,7/18/2024 2:51am,,,,$0.0050
+Naphtha Nixon,PHARR,Naphtha Nixon,$52.00,7/18/2024 2:51am,,,,$0.0050
+Naphtha,PORT OF BROWNSVILLE,Naphtha,$22.00,7/18/2024 2:51am,,,,$0.0050
+ULSD,PORT OF BROWNSVILLE,ULSD,$26.00,7/18/2024 2:51am,,,,$0.0050
+ULSD,PORT OF BROWNSVILLE,ULSD,$24850.00,7/22/2024 5:01pm,,,,$0.0050
+GAS 87,PORT OF BROWNSVILLE,GAS 87,$242.00,7/22/2024 5:01pm,,,,$0.0050
+Naphtha,El Paso (Holly),Naphtha,$178.00,8/1/2024 8:27pm,,,,$0.0050
