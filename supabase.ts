@@ -4,13 +4,16 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-    console.error('❌ Supabase Error: VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is missing.');
-    console.info('Tip: Ensure these are set in Vercel Project Settings > Environment Variables.');
+    throw new Error(
+        'Supabase configuration missing: set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY ' +
+        '(in .env.local for dev, in Vercel Environment Variables for production).'
+    );
 }
 
-// Fallback to empty strings to avoid "Url is required" crash, 
-// error will be caught during actual data fetching
-export const supabase = createClient(
-    supabaseUrl || 'https://placeholder.supabase.co',
-    supabaseAnonKey || 'placeholder'
-);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+    },
+});
