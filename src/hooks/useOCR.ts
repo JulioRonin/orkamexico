@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import Tesseract from 'tesseract.js';
 
 export interface ExtractedBOLData {
     bol: string;
@@ -25,6 +24,9 @@ export const useOCR = () => {
         setProgress(0);
 
         try {
+            // Dynamic import to avoid loading Tesseract at startup
+            const Tesseract = (await import('tesseract.js')).default;
+
             const reader = new FileReader();
             const imageSrc = await new Promise<string>((resolve, reject) => {
                 reader.onload = () => resolve(reader.result as string);
@@ -33,7 +35,7 @@ export const useOCR = () => {
             });
 
             const result = await Tesseract.recognize(imageSrc, 'eng+spa', {
-                logger: (m) => {
+                logger: (m: any) => {
                     if (m.status === 'recognizing') {
                         setProgress(Math.round(m.progress * 100));
                     }
@@ -124,3 +126,4 @@ export const useOCR = () => {
         error,
     };
 };
+
