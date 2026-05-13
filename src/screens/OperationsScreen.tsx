@@ -28,10 +28,10 @@ interface MapNode { x: number; y: number; label: string; country: 'US' | 'MX'; i
 
 const MAP_NODES: Record<string, MapNode> = {
     // Actual loading terminals
-    BLUEWING: { x: 848, y: 398, label: 'BLUEWING', country: 'US', isTerminal: true },
-    TITAN:    { x: 648, y: 342, label: 'TITAN',    country: 'US', isTerminal: true },
-    MOTUS:    { x: 508, y: 278, label: 'MOTUS',    country: 'US', isTerminal: true },
-    SUNOCO:   { x: 768, y: 250, label: 'SUNOCO',   country: 'US', isTerminal: true },
+    BLUEWING: { x: 920, y: 400, label: 'BLUEWING', country: 'US', isTerminal: true },
+    TITAN:    { x: 780, y: 340, label: 'TITAN',    country: 'US', isTerminal: true },
+    MOTUS:    { x: 930, y: 410, label: 'MOTUS',    country: 'US', isTerminal: true },
+    SUNOCO:   { x: 910, y: 390, label: 'SUNOCO',   country: 'US', isTerminal: true },
     // Border reference cities
     EPT:      { x: 158, y: 114, label: 'El Paso',      country: 'US' },
     EGL:      { x: 522, y: 290, label: 'Eagle Pass',   country: 'US' },
