@@ -14,6 +14,7 @@ import ComplianceScreen from './src/screens/ComplianceScreen';
 import FinanceScreen from './src/screens/FinanceScreen';
 import PLScreen from './src/screens/PLScreen';
 import OperationsScreen from './src/screens/OperationsScreen';
+import CobranzaScreen from './src/screens/CobranzaScreen';
 
 // Lazy load OCR (heavy Tesseract.js dependency)
 const OCRScreen = lazy(() => import('./src/screens/OCRScreen'));
@@ -44,6 +45,7 @@ const App = () => {
     const canViewHome = userRole === 'ADMIN' || userRole === 'CREDITO' || userRole === 'VENTAS';
     const canViewMonitor = userRole === 'ADMIN' || userRole === 'OPERACIONES' || userRole === 'VENTAS';
     const canViewFinance = userRole === 'ADMIN' || userRole === 'CREDITO';
+    const canViewCobranza = userRole === 'ADMIN' || userRole === 'CREDITO';
     const canViewSalesAndPartners = userRole === 'ADMIN' || userRole === 'CREDITO' || userRole === 'VENTAS';
 
     return (
@@ -57,6 +59,7 @@ const App = () => {
                         <Route path="/compliance" element={<ComplianceScreen />} />
                         {canViewFinance && <Route path="/finance" element={<FinanceScreen />} />}
                         {canViewFinance && <Route path="/pl" element={<PLScreen />} />}
+                        {canViewCobranza && <Route path="/cobranza" element={<CobranzaScreen />} />}
                         {canViewSalesAndPartners && <Route path="/ocr" element={<Suspense fallback={<LoadingSpinner />}><OCRScreen /></Suspense>} />}
                         {canViewSalesAndPartners && (
                             <>

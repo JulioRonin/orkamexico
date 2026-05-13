@@ -15,6 +15,7 @@ const BottomNav = ({ role, onLogout }: { role: UserRole, onLogout: () => void })
         { path: '/operations', label: 'Ops', icon: 'workflow', roles: ['ADMIN', 'OPERACIONES', 'VENTAS'] },
         { path: '/compliance', label: 'Docs', icon: 'description', roles: ['ADMIN', 'OPERACIONES', 'CREDITO', 'VENTAS'] },
         { path: '/ocr', label: 'OCR', icon: 'document_scanner', roles: ['ADMIN', 'VENTAS'] },
+        { path: '/cobranza', label: 'Cobranza', icon: 'account_balance', roles: ['ADMIN', 'CREDITO'] },
         { path: '/finance', label: 'Finance', icon: 'payments', roles: ['ADMIN', 'CREDITO'] },
         { path: '/pl', label: 'P&L', icon: 'trending_up', roles: ['ADMIN', 'CREDITO'] },
         { path: '/sales', label: 'Sales', icon: 'point_of_sale', roles: ['ADMIN', 'CREDITO', 'VENTAS'] },
