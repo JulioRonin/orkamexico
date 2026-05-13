@@ -8,7 +8,7 @@ export interface Sale {
     carrier: string;
     truck: string;
     trailer: string;
-    status: 'DONE' | 'BOL UPDATED' | 'POD PENDING' | 'ON TRACK' | 'LOADING' | 'APPROVED' | 'INTENTION';
+    status: 'DONE' | 'BOL UPDATED' | 'POD PENDING' | 'ON TRACK' | 'LOADING' | 'APPROVED' | 'INTENTION' | 'FRONTERA CRUZADA';
     bol: string;
     netBarrels: number;
     gallons: number;
