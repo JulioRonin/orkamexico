@@ -1,12 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSales } from '../hooks/useSales';
+import { useCompany } from '../context/CompanyContext';
+import CompanySwitcher from '../components/CompanySwitcher';
 import truckImage from '../../public/orka_fuel_tanker.png';
 
 const ACTIVE_STATUSES = new Set(['LOADING', 'ON TRACK', 'BOL UPDATED', 'POD PENDING', 'APPROVED']);
 
 const DashboardScreen = () => {
     const navigate = useNavigate();
+    const { selectedCompanyName } = useCompany();
     const { sales, loading } = useSales();
     const [selectedDateFilter, setSelectedDateFilter] = useState<string>('ALL');
     const [selectedClientFilter, setSelectedClientFilter] = useState<string>('ALL');
@@ -66,11 +69,12 @@ const DashboardScreen = () => {
                     <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-primary/30">O</div>
                         <div className="flex flex-col">
-                            <span className="text-sm font-semibold tracking-wide text-white leading-tight">ORKA MEXICO</span>
+                            <span className="text-sm font-semibold tracking-wide text-white leading-tight">{selectedCompanyName}</span>
                             <span className="text-[10px] text-gray-400 uppercase tracking-wider">Operations View</span>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
+                        <CompanySwitcher />
                         <button className="w-10 h-10 rounded-full glass-panel flex items-center justify-center text-gray-300 hover:text-white hover:bg-white/10 transition border border-white/5">
                             <span className="material-symbols-outlined text-xl">notifications</span>
                         </button>
@@ -158,9 +162,10 @@ const DashboardScreen = () => {
                 <div className="relative z-10 w-full max-w-5xl mx-auto flex items-center justify-center px-4 h-full">
                     {/* Floating Title */}
                     <div className="absolute top-10 left-6 lg:left-0 z-20">
-                        <h1 className="text-4xl font-light text-white leading-none tracking-tight">ORKA MEXICO</h1>
+                        <h1 className="text-4xl font-light text-white leading-none tracking-tight">{selectedCompanyName}</h1>
                         <p className="text-xs text-primary mt-2 flex items-center gap-1 bg-primary/10 w-fit px-2 py-1 rounded-full border border-primary/20">
-                            <span className="material-symbols-outlined text-sm">location_on</span> Monterrey Nuevo Leon
+                            <span className="material-symbols-outlined text-sm">location_on</span>
+                            {selectedCompanyName === 'ORKA MEXICO' ? 'Monterrey Nuevo Leon' : 'Houston, Texas'}
                         </p>
                     </div>
 

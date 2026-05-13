@@ -23,20 +23,23 @@ export interface Sale {
 }
 
 export const supabaseService = {
-    async getSales() {
-        const { data, error } = await supabase
+    async getSales(companyId?: string) {
+        let query = supabase
             .from('sales')
             .select(`
                 *,
                 customer:partners!sales_customer_id_fkey(name),
                 product:products(name),
                 carrier:partners!sales_carrier_id_fkey(name)
-            `)
-            .order('date', { ascending: false });
+            `);
 
+        if (companyId) {
+            query = query.eq('company_id', companyId);
+        }
+
+        const { data, error } = await query.order('date', { ascending: false });
         if (error) throw error;
 
-        // Map Supabase relational data back to the flat Sale interface
         return data.map((s: any) => ({
             ...s,
             customer: s.customer?.name || 'Unknown',

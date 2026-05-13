@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../supabase';
+import { useCompany } from '../context/CompanyContext';
 
 export interface ClientBalance {
     clientId: string;
@@ -14,6 +15,7 @@ export interface ClientBalance {
 }
 
 export const useClientBalances = () => {
+    const { selectedCompanyId } = useCompany();
     const [balances, setBalances] = useState<ClientBalance[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -25,6 +27,7 @@ export const useClientBalances = () => {
             const { data, error: dbError } = await supabase
                 .from('v_client_balances')
                 .select('*')
+                .eq('company_id', selectedCompanyId)
                 .or('credit_limit.gt.0,balance_due.gt.0')
                 .order('balance_due', { ascending: false });
 
@@ -49,7 +52,7 @@ export const useClientBalances = () => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [selectedCompanyId]);
 
     useEffect(() => { fetchBalances(); }, [fetchBalances]);
 

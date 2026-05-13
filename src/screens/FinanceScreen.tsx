@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { getDetailedBalanceReport } from '../../data';
 import { useSales } from '../hooks/useSales';
 import { useClientBalances } from '../hooks/useClientBalances';
+import { useCompany } from '../context/CompanyContext';
+import CompanySwitcher from '../components/CompanySwitcher';
 import ClientDetailModal from '../components/modals/ClientDetailModal';
 import BalanceReportModal from '../components/modals/BalanceReportModal';
 import InvoiceGenerationModal from '../components/helpers';
@@ -10,6 +12,7 @@ import PaymentRegistrationModal from '../../PaymentRegistrationModal';
 import type { Sale } from '../../supabaseService';
 
 const FinanceScreen = () => {
+    const { selectedCompanyName } = useCompany();
     const { sales, setSales, loading: salesLoading } = useSales();
     const { balances: allClientBalances, loading: balancesLoading } = useClientBalances();
 
@@ -139,11 +142,12 @@ const FinanceScreen = () => {
                                 <span className="material-symbols-outlined text-lg">attach_money</span>
                             </div>
                             <div>
-                                <h1 className="text-xs font-semibold tracking-wide uppercase text-gray-400">Orka Mexico</h1>
+                                <h1 className="text-xs font-semibold tracking-wide uppercase text-gray-400">{selectedCompanyName}</h1>
                                 <p className="text-lg font-bold leading-none text-white">Finance Hub</p>
                             </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 items-center">
+                            <CompanySwitcher />
                             {activeTab === 'balances' && (
                                 <select
                                     value={selectedClientFilter}
