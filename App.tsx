@@ -14,6 +14,7 @@ import ComplianceScreen from './src/screens/ComplianceScreen';
 import FinanceScreen from './src/screens/FinanceScreen';
 import PLScreen from './src/screens/PLScreen';
 import OperationsScreen from './src/screens/OperationsScreen';
+import OCRScreen from './src/screens/OCRScreen';
 
 // Shared components & context
 import BottomNav from './src/components/BottomNav';
@@ -44,6 +45,7 @@ const App = () => {
                         <Route path="/compliance" element={<ComplianceScreen />} />
                         {canViewFinance && <Route path="/finance" element={<FinanceScreen />} />}
                         {canViewFinance && <Route path="/pl" element={<PLScreen />} />}
+                        {canViewSalesAndPartners && <Route path="/ocr" element={<OCRScreen />} />}
                         {canViewSalesAndPartners && (
                             <>
                                 <Route path="/sales" element={<SalesScreen />} />
