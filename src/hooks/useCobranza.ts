@@ -37,17 +37,13 @@ export interface MonthlyRow {
     running: number;
 }
 
-export interface CustomerSummary {
-    customerId: string;
-    customer: string;
-    totalSales: number;
-    totalPaid: number;
-    balance: number;
-    lastPaymentDate: string;
-    lastPaymentAmount: number;
-    salesCount: number;
-    paymentsCount: number;
-    products: string[];
+export interface PartnerBalance {
+    id: string;
+    name: string;
+    creditLimit: number;
+    creditAvailable: number;
+    balance: number;        // credit_limit - credit_available (positive = client owes ORKA)
+    isDebtor: boolean;      // balance > 0
 }
 
 export interface AgingBucket {
@@ -56,6 +52,13 @@ export interface AgingBucket {
     amount: number;
     color: string;
 }
+
+// Outstanding DUE invoices from Airtable Balance_de_Creditos
+// These clients have $0 in the partners table but have overdue invoices
+export const DUE_INVOICE_ALERTS = [
+    { name: 'CIAY - RAIL', amount: 388530.80, note: 'Facturas vencidas sin cobrar (railcar)' },
+    { name: 'CAZBER',       amount: 161529.44, note: 'Facturas parciales vencidas' },
+] as const;
 
 const MONTH_LABELS: Record<string, string> = {
     '01': 'Ene', '02': 'Feb', '03': 'Mar', '04': 'Abr',
@@ -72,12 +75,14 @@ export const useCobranza = () => {
     const { selectedCompanyId } = useCompany();
     const [sales, setSales] = useState<CobranzaSale[]>([]);
     const [payments, setPayments] = useState<CobranzaPayment[]>([]);
+    const [partnerBalances, setPartnerBalances] = useState<PartnerBalance[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const load = async () => {
             setLoading(true);
             try {
+                // Sales from 2025 onwards (for Operaciones display)
                 const salesQuery = supabase
                     .from('sales')
                     .select(`
@@ -89,20 +94,33 @@ export const useCobranza = () => {
                     .gte('sale_date', '2025-01-01')
                     .order('sale_date', { ascending: false });
 
+                // All payments (no date filter) for accurate Cobros display
                 const paymentsQuery = supabase
                     .from('payments')
                     .select(`
                         id, payment_date, amount, bank_reference, notes,
                         customer:partners!payments_customer_id_fkey(id, name)
                     `)
+                    .gte('payment_date', '2025-01-01')
                     .order('payment_date', { ascending: false });
+
+                // All partners with non-zero balances — source of truth for AR
+                const partnersQuery = supabase
+                    .from('partners')
+                    .select('id, name, credit_limit, credit_available')
+                    .neq('name', 'DUMMY CLIENT')
+                    .order('name');
 
                 if (selectedCompanyId) {
                     salesQuery.eq('company_id', selectedCompanyId);
                     paymentsQuery.eq('company_id', selectedCompanyId);
                 }
 
-                const [{ data: sd }, { data: pd }] = await Promise.all([salesQuery, paymentsQuery]);
+                const [
+                    { data: sd },
+                    { data: pd },
+                    { data: partners },
+                ] = await Promise.all([salesQuery, paymentsQuery, partnersQuery]);
 
                 setSales((sd || []).map((s: any) => ({
                     id: s.id,
@@ -129,6 +147,36 @@ export const useCobranza = () => {
                     bankRef: p.bank_reference || undefined,
                     notes: p.notes || undefined,
                 })));
+
+                // Build partner balances — deduplicate by keeping the record with highest |balance|
+                const seen = new Map<string, PartnerBalance>();
+                (partners || []).forEach((p: any) => {
+                    const cl = Number(p.credit_limit) || 0;
+                    const ca = Number(p.credit_available) || 0;
+                    const balance = cl - ca;
+                    if (Math.abs(balance) < 0.01) return; // skip zero-balance partners
+                    const existing = seen.get(p.name);
+                    if (!existing || Math.abs(balance) > Math.abs(existing.balance)) {
+                        seen.set(p.name, {
+                            id: p.id,
+                            name: p.name,
+                            creditLimit: cl,
+                            creditAvailable: ca,
+                            balance,
+                            isDebtor: balance > 0,
+                        });
+                    }
+                });
+
+                // Sort: debtors first (highest balance), then creditors (most negative last)
+                const sorted = Array.from(seen.values()).sort((a, b) => {
+                    if (a.isDebtor !== b.isDebtor) return a.isDebtor ? -1 : 1;
+                    return a.isDebtor
+                        ? b.balance - a.balance
+                        : a.balance - b.balance;
+                });
+
+                setPartnerBalances(sorted);
             } catch (e) {
                 console.error('useCobranza:', e);
             } finally {
@@ -137,50 +185,6 @@ export const useCobranza = () => {
         };
         load();
     }, [selectedCompanyId]);
-
-    // ── Per-customer summaries ────────────────────────────────────────────────
-    const customerSummaries = useMemo((): CustomerSummary[] => {
-        const map: Record<string, CustomerSummary> = {};
-
-        sales.forEach(s => {
-            if (!map[s.customerId]) {
-                map[s.customerId] = {
-                    customerId: s.customerId,
-                    customer: s.customer,
-                    totalSales: 0, totalPaid: 0, balance: 0,
-                    lastPaymentDate: '', lastPaymentAmount: 0,
-                    salesCount: 0, paymentsCount: 0, products: [],
-                };
-            }
-            map[s.customerId].totalSales += s.total;
-            map[s.customerId].salesCount++;
-            if (!map[s.customerId].products.includes(s.product))
-                map[s.customerId].products.push(s.product);
-        });
-
-        payments.forEach(p => {
-            if (!map[p.customerId]) {
-                map[p.customerId] = {
-                    customerId: p.customerId,
-                    customer: p.customer,
-                    totalSales: 0, totalPaid: 0, balance: 0,
-                    lastPaymentDate: '', lastPaymentAmount: 0,
-                    salesCount: 0, paymentsCount: 0, products: [],
-                };
-            }
-            map[p.customerId].totalPaid += p.amount;
-            map[p.customerId].paymentsCount++;
-            if (!map[p.customerId].lastPaymentDate || p.date > map[p.customerId].lastPaymentDate) {
-                map[p.customerId].lastPaymentDate = p.date;
-                map[p.customerId].lastPaymentAmount = p.amount;
-            }
-        });
-
-        return Object.values(map).map(c => ({
-            ...c,
-            balance: c.totalSales - c.totalPaid,
-        })).sort((a, b) => b.balance - a.balance);
-    }, [sales, payments]);
 
     // ── Monthly table (2025 onwards, grouped by month) ────────────────────────
     const monthlyRows = useMemo((): MonthlyRow[] => {
@@ -192,12 +196,10 @@ export const useCobranza = () => {
             salesMap[ym] = (salesMap[ym] || 0) + s.total;
         });
 
-        payments
-            .filter(p => p.date >= '2025-01-01')
-            .forEach(p => {
-                const ym = p.date.substring(0, 7);
-                paymentsMap[ym] = (paymentsMap[ym] || 0) + p.amount;
-            });
+        payments.forEach(p => {
+            const ym = p.date.substring(0, 7);
+            paymentsMap[ym] = (paymentsMap[ym] || 0) + p.amount;
+        });
 
         const months = Array.from(new Set([...Object.keys(salesMap), ...Object.keys(paymentsMap)]))
             .sort();
@@ -212,7 +214,7 @@ export const useCobranza = () => {
         });
     }, [sales, payments]);
 
-    // ── Aging buckets (estimated, based on monthly net) ───────────────────────
+    // ── Aging buckets — based on ALPHA's monthly net (primary debtor) ─────────
     const agingBuckets = useMemo((): AgingBucket[] => {
         const today = new Date();
         const buckets = [
@@ -235,7 +237,23 @@ export const useCobranza = () => {
         return buckets;
     }, [monthlyRows]);
 
+    const totalDebtors = useMemo(
+        () => partnerBalances.filter(p => p.isDebtor).reduce((a, p) => a + p.balance, 0),
+        [partnerBalances],
+    );
+    const totalCreditors = useMemo(
+        () => partnerBalances.filter(p => !p.isDebtor).reduce((a, p) => a + p.balance, 0),
+        [partnerBalances],
+    );
+
     return {
-        sales, payments, customerSummaries, monthlyRows, agingBuckets, loading,
+        sales,
+        payments,
+        partnerBalances,
+        monthlyRows,
+        agingBuckets,
+        loading,
+        totalDebtors,
+        totalCreditors,
     };
 };
