@@ -12,6 +12,7 @@ const BottomNav = ({ role, onLogout }: { role: UserRole, onLogout: () => void })
     const navItems = [
         { path: '/', label: 'Home', icon: 'dashboard', roles: ['ADMIN', 'CREDITO', 'VENTAS'] },
         { path: '/monitor', label: 'Monitor', icon: 'radar', roles: ['ADMIN', 'OPERACIONES', 'VENTAS'] },
+        { path: '/operations', label: 'Ops', icon: 'workflow', roles: ['ADMIN', 'OPERACIONES', 'VENTAS'] },
         { path: '/compliance', label: 'Docs', icon: 'description', roles: ['ADMIN', 'OPERACIONES', 'CREDITO', 'VENTAS'] },
         { path: '/finance', label: 'Finance', icon: 'payments', roles: ['ADMIN', 'CREDITO'] },
         { path: '/pl', label: 'P&L', icon: 'trending_up', roles: ['ADMIN', 'CREDITO'] },

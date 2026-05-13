@@ -13,6 +13,7 @@ import MonitorScreen from './src/screens/MonitorScreen';
 import ComplianceScreen from './src/screens/ComplianceScreen';
 import FinanceScreen from './src/screens/FinanceScreen';
 import PLScreen from './src/screens/PLScreen';
+import OperationsScreen from './src/screens/OperationsScreen';
 
 // Shared components & context
 import BottomNav from './src/components/BottomNav';
@@ -39,6 +40,7 @@ const App = () => {
                     <Routes>
                         {canViewHome && <Route path="/" element={<DashboardScreen />} />}
                         {canViewMonitor && <Route path="/monitor" element={<MonitorScreen />} />}
+                        {canViewMonitor && <Route path="/operations" element={<OperationsScreen />} />}
                         <Route path="/compliance" element={<ComplianceScreen />} />
                         {canViewFinance && <Route path="/finance" element={<FinanceScreen />} />}
                         {canViewFinance && <Route path="/pl" element={<PLScreen />} />}
