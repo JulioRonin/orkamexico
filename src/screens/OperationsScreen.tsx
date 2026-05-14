@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
     useOperations,
     OperationStatus,
@@ -8,6 +8,7 @@ import {
 } from '../hooks/useOperations';
 import { useCompany } from '../context/CompanyContext';
 import CompanySwitcher from '../components/CompanySwitcher';
+import { supabaseService } from '../../supabaseService';
 
 type ViewMode = 'pipeline' | 'lista' | 'mapa';
 
@@ -119,6 +120,9 @@ const ListaView = ({ operations }: { operations: Operation[] }) => {
     const [filterTerminal, setFilterTerminal] = useState('ALL');
     const [sortField, setSortField] = useState<keyof Operation>('date');
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+    const [editingOp, setEditingOp] = useState<Operation | null>(null);
+    const [editForm, setEditForm] = useState<Partial<Operation>>({});
+    const [isSaving, setIsSaving] = useState(false);
 
     const terminals = useMemo(() => ['ALL', ...Array.from(new Set(operations.map(o => o.terminal)))], [operations]);
 
@@ -145,6 +149,44 @@ const ListaView = ({ operations }: { operations: Operation[] }) => {
     const toggleSort = (field: keyof Operation) => {
         if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
         else { setSortField(field); setSortDir('asc'); }
+    };
+
+    const openEdit = (op: Operation) => {
+        setEditingOp(op);
+        setEditForm({
+            status: op.status,
+            truck: op.truck,
+            trailer: op.trailer,
+            bol: op.bol,
+            gallons: op.gallons,
+            carrier: op.carrier,
+        });
+    };
+
+    const closeEdit = () => {
+        setEditingOp(null);
+        setEditForm({});
+    };
+
+    const handleSave = async () => {
+        if (!editingOp) return;
+        setIsSaving(true);
+        try {
+            await supabaseService.updateSale(editingOp.id, {
+                status: editForm.status,
+                truck_number: editForm.truck,
+                trailer_number: editForm.trailer,
+                bol_number: editForm.bol,
+                gallons: editForm.gallons,
+            });
+            closeEdit();
+            window.location.reload();
+        } catch (err) {
+            console.error('Error saving operation:', err);
+            alert('Error al guardar los cambios');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const Th = ({ field, children }: { field: keyof Operation; children: React.ReactNode }) => (
@@ -209,7 +251,7 @@ const ListaView = ({ operations }: { operations: Operation[] }) => {
                                 filtered.map(op => {
                                     const cfg = S[op.status];
                                     return (
-                                        <tr key={op.id} className="border-b border-gray-800 hover:bg-white/5 transition">
+                                        <tr key={op.id} onClick={() => openEdit(op)} className="border-b border-gray-800 hover:bg-white/5 transition cursor-pointer">
                                             <td className="py-2 px-3 text-xs text-gray-300">{new Date(op.date).toLocaleDateString('es-MX')}</td>
                                             <td className="py-2 px-3">
                                                 <span className="text-xs font-mono font-bold text-blue-300 bg-blue-500/10 px-2 py-0.5 rounded">{op.terminal}</span>
@@ -234,6 +276,97 @@ const ListaView = ({ operations }: { operations: Operation[] }) => {
                     </table>
                 </div>
             </div>
+
+            {/* Edit Modal */}
+            {editingOp && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={closeEdit}>
+                    <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 max-w-2xl w-full mx-4" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-bold text-white">Editar Operación</h2>
+                            <button onClick={closeEdit} className="text-gray-400 hover:text-white">
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs font-bold text-gray-400 uppercase">Cliente</label>
+                                    <p className="text-sm text-white mt-1">{editingOp.customer}</p>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-400 uppercase">Producto</label>
+                                    <p className="text-sm text-white mt-1">{editingOp.product}</p>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-400 uppercase">Terminal</label>
+                                    <p className="text-sm text-white mt-1">{editingOp.terminal}</p>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-400 uppercase">Fecha</label>
+                                    <p className="text-sm text-white mt-1">{new Date(editingOp.date).toLocaleDateString('es-MX')}</p>
+                                </div>
+                            </div>
+
+                            <div className="border-t border-gray-700 pt-4 space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-400 uppercase">Número de Pipa</label>
+                                        <input type="text" value={editForm.truck || ''} onChange={e => setEditForm({...editForm, truck: e.target.value})}
+                                            className="w-full mt-1 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-blue-500" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-400 uppercase">Número de Remolque</label>
+                                        <input type="text" value={editForm.trailer || ''} onChange={e => setEditForm({...editForm, trailer: e.target.value})}
+                                            className="w-full mt-1 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-blue-500" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-400 uppercase">Placa de Remolque</label>
+                                        <input type="text" placeholder="—"
+                                            className="w-full mt-1 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-gray-400 focus:outline-none focus:border-blue-500" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-400 uppercase">Placa de Pipa</label>
+                                        <input type="text" placeholder="—"
+                                            className="w-full mt-1 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-gray-400 focus:outline-none focus:border-blue-500" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-400 uppercase">Número BOL</label>
+                                        <input type="text" value={editForm.bol || ''} onChange={e => setEditForm({...editForm, bol: e.target.value})}
+                                            className="w-full mt-1 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-blue-500" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-400 uppercase">Galones Cargados</label>
+                                        <input type="number" value={editForm.gallons || 0} onChange={e => setEditForm({...editForm, gallons: parseFloat(e.target.value)})}
+                                            className="w-full mt-1 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-blue-500" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-400 uppercase">Transportista</label>
+                                        <input type="text" value={editForm.carrier || ''} onChange={e => setEditForm({...editForm, carrier: e.target.value})}
+                                            className="w-full mt-1 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-blue-500" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-400 uppercase">Estatus</label>
+                                        <select value={editForm.status || ''} onChange={e => setEditForm({...editForm, status: e.target.value as OperationStatus})}
+                                            className="w-full mt-1 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-blue-500">
+                                            {STATUS_ORDER.map(s => <option key={s} value={s}>{S[s].label}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-2 justify-end mt-6">
+                            <button onClick={closeEdit} className="px-4 py-2 bg-gray-700 text-white rounded-lg text-sm font-medium hover:bg-gray-600 transition">
+                                Cancelar
+                            </button>
+                            <button onClick={handleSave} disabled={isSaving} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition disabled:opacity-50">
+                                {isSaving ? 'Guardando...' : 'Guardar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -513,7 +646,7 @@ const MapaView = ({ operations, terminalStats, routeStats }: {
 const OperationsScreen = () => {
     const { selectedCompanyName } = useCompany();
     const { operations, operationsByStatus, terminalStats, routeStats, globalStats, loading } = useOperations();
-    const [activeView, setActiveView] = useState<ViewMode>('pipeline');
+    const [activeView, setActiveView] = useState<ViewMode>('lista');
 
     if (loading) {
         return (
