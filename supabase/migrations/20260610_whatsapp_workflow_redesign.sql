@@ -10,7 +10,8 @@ create table if not exists public.nomination_queue (
     sender_name text,                       -- WhatsApp profile name
     quantity integer not null,              -- number of pipas/units
     terminal text,                          -- terminal for loading
-    wa_message_id text unique,              -- original nomination message ID
+    requested_date date,                    -- date in the nomination header (DD/MM/YYYY in group)
+    event_id uuid references public.whatsapp_events(id), -- source message (several rows can share one message)
     status text not null default 'PENDING_APPROVAL', -- PENDING_APPROVAL | APPROVED | CANCELLED
     created_at timestamptz default now(),
     approved_at timestamptz,
@@ -27,7 +28,7 @@ create policy "nomination_queue_read" on public.nomination_queue
 create table if not exists public.payment_receipts (
     id uuid primary key default gen_random_uuid(),
     company_id uuid not null references public.companies(id),
-    partner_id uuid not null references public.partners(id),
+    partner_id uuid references public.partners(id), -- nullable: cobranza lo asigna al registrar
     from_number text not null,              -- WhatsApp number that sent it
     sender_name text,
     amount_claimed numeric(12, 2),          -- amount mentioned in message (if any)
@@ -36,7 +37,7 @@ create table if not exists public.payment_receipts (
     storage_url text,                       -- path to image/PDF in storage bucket
     file_name text,
     file_size integer,
-    wa_message_id text unique,              -- original message ID
+    event_id uuid references public.whatsapp_events(id), -- source message
     status text not null default 'RECEIVED', -- RECEIVED | REGISTERED | MATCHED_TO_INVOICE
     notes text,
     created_at timestamptz default now(),

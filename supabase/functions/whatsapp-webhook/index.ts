@@ -46,16 +46,34 @@ const MESSAGE_CLASSIFICATION_SCHEMA = {
             type: "string",
             enum: ["nomination", "approval", "balance_inquiry", "payment_evidence", "other"],
             description:
-                "nomination = pedido de cargar N pipas; approval = confirmación de aprobación; " +
-                "balance_inquiry = cliente pregunta por saldo; payment_evidence = comprobante de pago; other = otro",
+                "nomination = mensaje con líneas de carga (fecha, •producto, N-CLIENTE(TERMINAL)); " +
+                "approval = confirmación tipo 'Verde'; balance_inquiry = pregunta por saldo; " +
+                "payment_evidence = comprobante de pago; other = otro",
         },
-        trucks: { type: "integer", description: "número de pipas solicitadas (0 si no aplica)" },
-        product: { type: ["string", "null"], description: "producto mencionado, ej. MAGNA, DIESEL, PREMIUM" },
-        customer: { type: ["string", "null"], description: "cliente para quien es la carga" },
-        terminal: { type: ["string", "null"], description: "terminal de carga" },
+        date: {
+            type: ["string", "null"],
+            description: "fecha de la nominación en YYYY-MM-DD; '10/06/2026' es DD/MM/YYYY → 2026-06-10",
+        },
+        nominations: {
+            type: "array",
+            description:
+                "una entrada por cada línea 'N-CLIENTE(TERMINAL)'. El producto con viñeta (•Naphtha) " +
+                "aplica a todas las líneas que le siguen hasta el próximo producto.",
+            items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                    quantity: { type: "integer", description: "número de pipas (el N en 'N-CLIENTE')" },
+                    customer: { type: ["string", "null"], description: "código del cliente, ej. TIF" },
+                    product: { type: ["string", "null"], description: "producto, ej. Naphtha, Magna, Diesel" },
+                    terminal: { type: ["string", "null"], description: "terminal entre paréntesis, ej. MOTUS" },
+                },
+                required: ["quantity", "customer", "product", "terminal"],
+            },
+        },
         summary: { type: "string", description: "resumen de una línea en español" },
     },
-    required: ["kind", "trucks", "product", "customer", "terminal", "summary"],
+    required: ["kind", "date", "nominations", "summary"],
 } as const;
 
 const BOL_SCHEMA = {
@@ -101,22 +119,21 @@ async function downloadMedia(mediaId: string): Promise<{ bytes: Uint8Array; mime
     return { bytes: new Uint8Array(await file.arrayBuffer()), mime: meta.mime_type };
 }
 
-// Fuzzy lookup de un partner/product por nombre mencionado en WhatsApp
+// Fuzzy lookup de un partner/product por nombre mencionado en WhatsApp.
+// Filtrado por company_id: los catálogos tienen filas duplicadas por empresa.
 async function findPartner(name: string | null): Promise<{ id: string; name: string } | null> {
     if (!name) return null;
-    const { data } = await supabase
-        .from("partners").select("id, name")
-        .ilike("name", `%${name.trim()}%`)
-        .limit(1);
+    let q = supabase.from("partners").select("id, name").ilike("name", `%${name.trim()}%`);
+    if (COMPANY_ID) q = q.eq("company_id", COMPANY_ID);
+    const { data } = await q.limit(1);
     return data?.[0] ?? null;
 }
 
 async function findProduct(name: string | null): Promise<{ id: string; name: string } | null> {
     if (!name) return null;
-    const { data } = await supabase
-        .from("products").select("id, name")
-        .ilike("name", `%${name.trim()}%`)
-        .limit(1);
+    let q = supabase.from("products").select("id, name").ilike("name", `%${name.trim()}%`);
+    if (COMPANY_ID) q = q.eq("company_id", COMPANY_ID);
+    const { data } = await q.limit(1);
     return data?.[0] ?? null;
 }
 
@@ -126,12 +143,22 @@ async function classifyText(body: string): Promise<any> {
         model: MODEL,
         max_tokens: 1024,
         system:
-            "Eres el asistente de operaciones de ORKA México. Clasificas mensajes de WhatsApp de grupos operativos.\n" +
-            "NOMINACIÓN: alguien pide cargar N pipas de un producto para un cliente ('2 pipas de magna para ALPHA en TITAN').\n" +
-            "APROBACIÓN: manager aprueba nominación anterior ('aprobado', 'adelante', 'ok para cargar', etc).\n" +
-            "BALANCE_INQUIRY: cliente pregunta por saldo ('¿cuál es mi saldo?', 'balance?', 'debo?').\n" +
-            "PAYMENT_EVIDENCE: comprobante de pago ('aquí va el transfer', 'foto del recibo', etc) - generalmente con imagen.\n" +
-            "OTHER: saludos, preguntas, temas ajenos.",
+            "Eres el asistente de operaciones de ORKA México. Clasificas mensajes del grupo de WhatsApp " +
+            "'ORKA DAY-TO-DAY FLOW'.\n\n" +
+            "NOMINACIÓN — formato real del grupo:\n" +
+            "10/06/2026\n" +
+            "•Naphtha\n" +
+            "5-TIF✅(MOTUS)\n" +
+            "= el 10-jun-2026, producto Naphtha, 5 pipas para el cliente TIF cargando en la terminal MOTUS.\n" +
+            "Reglas: la fecha es DD/MM/YYYY. Cada producto va con viñeta (•) y aplica a las líneas que le siguen. " +
+            "Cada línea 'N-CLIENTE(TERMINAL)' es una entrada independiente; un mensaje puede traer varios " +
+            "productos y varios clientes. El emoji ✅ dentro de la línea es parte del formato, NO significa aprobado. " +
+            "También acepta redacción libre: '2 pipas de magna para ALPHA en TITAN'.\n\n" +
+            "APROBACIÓN: la palabra 'Verde' (con o sin 💚) significa que la nominación queda APROBADA. " +
+            "También: 'aprobado', 'adelante', 'ok para cargar'.\n" +
+            "BALANCE_INQUIRY: pregunta por saldo ('¿cuál es mi saldo?', 'balance?', 'cuánto debo?').\n" +
+            "PAYMENT_EVIDENCE: comprobante de pago ('aquí va el transfer', 'foto del recibo').\n" +
+            "OTHER: saludos, reacciones, temas ajenos.",
         messages: [{ role: "user", content: body }],
         output_config: { format: { type: "json_schema", schema: MESSAGE_CLASSIFICATION_SCHEMA } },
     });
@@ -144,81 +171,93 @@ async function processNomination(
     data: any,
     contactName: string | undefined
 ) {
-    if (!data.trucks || !data.trucks > 0) {
+    const entries = (data.nominations ?? []).filter((n: any) => n.quantity > 0);
+    if (!entries.length || !COMPANY_ID) {
         await supabase.from("whatsapp_events")
             .update({ classification: "nomination", extraction: data, status: "ignored" })
             .eq("id", eventId);
         return;
     }
 
-    const [customer, product] = await Promise.all([
-        findPartner(data.customer),
-        findProduct(data.product),
-    ]);
+    const created: string[] = [];       // líneas confirmadas para la respuesta
+    const problems: string[] = [];      // líneas con cliente/producto no identificado
+    const nominationIds: string[] = [];
 
-    if (!customer || !product || !COMPANY_ID) {
-        await supabase.from("whatsapp_events")
-            .update({
-                classification: "nomination",
-                extraction: data,
-                status: "needs_review",
-                error: `cliente=${customer?.name ?? "NO ENCONTRADO"}, producto=${product?.name ?? "NO ENCONTRADO"}`,
+    for (const entry of entries) {
+        const [customer, product] = await Promise.all([
+            findPartner(entry.customer),
+            findProduct(entry.product),
+        ]);
+
+        if (!customer || !product) {
+            problems.push(
+                `${entry.quantity}-${entry.customer ?? "?"}: ` +
+                `${!customer ? `cliente "${entry.customer}" no encontrado` : ""}` +
+                `${!customer && !product ? ", " : ""}` +
+                `${!product ? `producto "${entry.product}" no encontrado` : ""}`
+            );
+            continue;
+        }
+
+        const { data: nomination, error } = await supabase
+            .from("nomination_queue")
+            .insert({
+                company_id: COMPANY_ID,
+                customer_id: customer.id,
+                product_id: product.id,
+                from_number: from,
+                sender_name: contactName,
+                quantity: entry.quantity,
+                terminal: entry.terminal,
+                requested_date: data.date ?? null,
+                event_id: eventId,
+                status: "PENDING_APPROVAL",
             })
-            .eq("id", eventId);
-        await sendWhatsApp(
-            from,
-            `⚠️ Detecté una nominación (${data.summary}) pero no pude identificar ` +
-                `${!customer ? `al cliente "${data.customer}"` : ""}${!customer && !product ? " ni " : ""}` +
-                `${!product ? `el producto "${data.product}"` : ""}. ¿Confirmas los nombres exactos?`
+            .select("id")
+            .single();
+        if (error) throw error;
+
+        nominationIds.push(nomination.id);
+        created.push(
+            `${entry.quantity} × ${product.name} → ${customer.name}` +
+            `${entry.terminal ? ` (${entry.terminal})` : ""}`
         );
-        return;
     }
-
-    // Crear entrada en nomination_queue, status PENDING_APPROVAL
-    const { data: nomination, error } = await supabase
-        .from("nomination_queue")
-        .insert({
-            company_id: COMPANY_ID,
-            customer_id: customer.id,
-            product_id: product.id,
-            from_number: from,
-            sender_name: contactName,
-            quantity: data.trucks,
-            terminal: data.terminal,
-            wa_message_id: eventId,
-            status: "PENDING_APPROVAL",
-        })
-        .select("id")
-        .single();
-
-    if (error) throw error;
 
     await supabase.from("whatsapp_events")
         .update({
             classification: "nomination",
             extraction: data,
-            nomination_ids: [nomination.id],
-            status: "processed",
+            nomination_ids: nominationIds,
+            status: problems.length ? "needs_review" : "processed",
+            error: problems.length ? problems.join("; ") : null,
         })
         .eq("id", eventId);
 
-    await sendWhatsApp(
-        from,
-        `✅ Registré nominación de ${data.trucks} pipa${data.trucks > 1 ? "s" : ""} de ${product.name} ` +
-            `para ${customer.name}${data.terminal ? ` en ${data.terminal}` : ""}. ` +
-            `Pendiente de aprobación.`
-    );
+    let reply = "";
+    if (created.length) {
+        reply += `✅ Nominación registrada${data.date ? ` para ${data.date}` : ""}:\n` +
+            created.map((l) => `• ${l}`).join("\n") +
+            `\nPendiente de aprobación (responder "Verde" para aprobar).`;
+    }
+    if (problems.length) {
+        reply += `${reply ? "\n\n" : ""}⚠️ No pude registrar:\n` +
+            problems.map((l) => `• ${l}`).join("\n") +
+            `\n¿Confirmas los nombres exactos?`;
+    }
+    await sendWhatsApp(from, reply);
 }
 
 async function processApproval(eventId: string, from: string, data: any) {
-    // Buscar nominaciones recientes en PENDING_APPROVAL (últimas 24 horas)
-    // En producción, se podría mejorar con un contexto explícito
+    // "Verde" aprueba todas las nominaciones pendientes recientes (últimas 24 horas),
+    // igual que en el grupo: la respuesta aprueba el mensaje de nominación completo.
     const { data: pending, error } = await supabase
         .from("nomination_queue")
-        .select("id, quantity, product_id, customer_id, company_id")
+        .select("id, quantity, requested_date, terminal, company_id, customer_id, product_id, " +
+                "partners:customer_id(name), products:product_id(name)")
         .eq("status", "PENDING_APPROVAL")
         .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-        .limit(1);
+        .order("created_at", { ascending: true });
 
     if (error || !pending?.length) {
         await supabase.from("whatsapp_events")
@@ -236,49 +275,58 @@ async function processApproval(eventId: string, from: string, data: any) {
         return;
     }
 
-    const nom = pending[0];
     const approvedAt = new Date().toISOString();
+    const allSaleIds: string[] = [];
+    const summaryLines: string[] = [];
 
-    // Actualizar nominación a APPROVED
-    await supabase
-        .from("nomination_queue")
-        .update({ status: "APPROVED", approved_at: approvedAt })
-        .eq("id", nom.id);
+    for (const nom of pending) {
+        await supabase
+            .from("nomination_queue")
+            .update({ status: "APPROVED", approved_at: approvedAt })
+            .eq("id", nom.id);
 
-    // Crear sales (una por pipa) con status APPROVED
-    const rows = Array.from({ length: nom.quantity }, () => ({
-        company_id: nom.company_id,
-        sale_date: new Date().toISOString().slice(0, 10),
-        customer_id: nom.customer_id,
-        product_id: nom.product_id,
-        nomination_id: nom.id,
-        approved_at: approvedAt,
-        gallons: 0,
-        rate: 0,
-        total_sale: 0,
-        status: "APPROVED",
-    }));
+        // Una venta por pipa, con status APPROVED — lista para recibir su BOL al salir
+        const rows = Array.from({ length: nom.quantity }, () => ({
+            company_id: nom.company_id,
+            sale_date: nom.requested_date ?? new Date().toISOString().slice(0, 10),
+            customer_id: nom.customer_id,
+            product_id: nom.product_id,
+            nomination_id: nom.id,
+            approved_at: approvedAt,
+            gallons: 0,
+            rate: 0,
+            total_sale: 0,
+            status: "APPROVED",
+        }));
+        const { data: sales, error: saleErr } = await supabase
+            .from("sales").insert(rows).select("id");
+        if (saleErr) throw saleErr;
 
-    const { data: sales, error: saleErr } = await supabase
-        .from("sales")
-        .insert(rows)
-        .select("id");
-    if (saleErr) throw saleErr;
+        allSaleIds.push(...sales.map((s) => s.id));
+        const customerName = (nom as any).partners?.name ?? "cliente";
+        const productName = (nom as any).products?.name ?? "producto";
+        summaryLines.push(
+            `${nom.quantity} × ${productName} → ${customerName}` +
+            `${nom.terminal ? ` (${nom.terminal})` : ""}`
+        );
+    }
 
     await supabase.from("whatsapp_events")
         .update({
             classification: "approval",
             extraction: data,
-            nomination_ids: [nom.id],
-            sale_ids: sales.map((s) => s.id),
+            nomination_ids: pending.map((n) => n.id),
+            sale_ids: allSaleIds,
             status: "processed",
         })
         .eq("id", eventId);
 
     await sendWhatsApp(
         from,
-        `✅ Aprobado: creé ${nom.quantity} operación${nom.quantity > 1 ? "es" : ""} en el ERP. ` +
-            `Esperando BOLs de carga.`
+        `💚 Verde — aprobado:\n` +
+            summaryLines.map((l) => `• ${l}`).join("\n") +
+            `\nCreé ${allSaleIds.length} operación${allSaleIds.length > 1 ? "es" : ""} en el ERP. ` +
+            `Esperando BOL de cada pipa al salir.`
     );
 }
 
@@ -340,10 +388,10 @@ async function processPaymentEvidence(
         .from("payment_receipts")
         .insert({
             company_id: COMPANY_ID,
-            partner_id: null, // Se asigna manualmente
+            partner_id: null, // cobranza lo asigna al registrar el pago
             from_number: from,
             receipt_type: "transfer",
-            wa_message_id: eventId,
+            event_id: eventId,
             storage_url: `payment_receipts/${eventId}`,
             file_name: `receipt_${eventId}`,
             file_size: bytes.length,
