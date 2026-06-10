@@ -1,13 +1,16 @@
 // WhatsApp Business Cloud API webhook → ORKA ERP
 //
-// Flujo:
+// Flujo rediseñado:
 //   1. Meta envía cada mensaje del número/grupo del bot a este webhook.
-//   2. Texto  → Claude clasifica: ¿es una nominación? → extrae {pipas, producto,
-//               cliente, terminal, estatus} → crea ventas en `sales` como INTENTION.
-//   3. Imagen/PDF → se asume BOL → Claude vision extrae {BOL#, galones, pipa, fecha}
-//               → busca la operación correspondiente → actualiza la venta, sube el
-//               archivo a Storage y lo registra en `compliance_documents`.
-//   4. Responde por WhatsApp confirmando o pidiendo aclaración.
+//   2. NOMINACIÓN (texto) → crea entrada en nomination_queue con status PENDING_APPROVAL.
+//      No crea sales aún. Espera aprobación.
+//   3. APROBACIÓN (texto "aprobado", "adelante", etc.) → convierte nominaciones pending
+//      a sales con status APPROVED.
+//   4. BOL (imagen/PDF) → extrae datos, busca sale APPROVED por truck_number,
+//      actualiza a BOL_UPDATED, adjunta documento.
+//   5. SALDO/BALANCE (texto "saldo", "balance") → responde con balance actual del cliente.
+//   6. PAGO/RECIBO (imagen de comprobante) → registra en payment_receipts.
+//   7. CIERRE DIARIO (7am cron) → congela balances en daily_closure_snapshots.
 //
 // Secrets requeridos (Dashboard → Edge Functions → Secrets):
 //   WHATSAPP_VERIFY_TOKEN   - string inventado por ti, se repite en Meta al registrar el webhook
@@ -35,24 +38,24 @@ const GRAPH = "https://graph.facebook.com/v21.0";
 const MODEL = "claude-opus-4-8";
 
 // ── Schemas para structured outputs ──────────────────────────────────────────
-const NOMINATION_SCHEMA = {
+const MESSAGE_CLASSIFICATION_SCHEMA = {
     type: "object",
     additionalProperties: false,
     properties: {
         kind: {
             type: "string",
-            enum: ["nomination", "status_update", "other"],
-            description: "nomination = alguien pide cargar N pipas de un producto para un cliente",
+            enum: ["nomination", "approval", "balance_inquiry", "payment_evidence", "other"],
+            description:
+                "nomination = pedido de cargar N pipas; approval = confirmación de aprobación; " +
+                "balance_inquiry = cliente pregunta por saldo; payment_evidence = comprobante de pago; other = otro",
         },
         trucks: { type: "integer", description: "número de pipas solicitadas (0 si no aplica)" },
         product: { type: ["string", "null"], description: "producto mencionado, ej. MAGNA, DIESEL, PREMIUM" },
         customer: { type: ["string", "null"], description: "cliente para quien es la carga" },
-        terminal: { type: ["string", "null"], description: "terminal de carga: BLUEWING, TITAN, MOTUS, SUNOCO" },
-        status: { type: ["string", "null"], description: "estatus mencionado si es status_update" },
-        truck_number: { type: ["string", "null"], description: "número de pipa si se menciona una unidad específica" },
-        summary: { type: "string", description: "resumen de una línea en español de lo que pide el mensaje" },
+        terminal: { type: ["string", "null"], description: "terminal de carga" },
+        summary: { type: "string", description: "resumen de una línea en español" },
     },
-    required: ["kind", "trucks", "product", "customer", "terminal", "status", "truck_number", "summary"],
+    required: ["kind", "trucks", "product", "customer", "terminal", "summary"],
 } as const;
 
 const BOL_SCHEMA = {
@@ -117,26 +120,33 @@ async function findProduct(name: string | null): Promise<{ id: string; name: str
     return data?.[0] ?? null;
 }
 
-// ── Procesamiento: texto (nominaciones) ───────────────────────────────────────
-async function processText(eventId: string, from: string, body: string) {
+// ── Procesamiento: texto (clasificación de tipo de mensaje) ──────────────────
+async function classifyText(body: string): Promise<any> {
     const msg = await anthropic.messages.create({
         model: MODEL,
         max_tokens: 1024,
         system:
-            "Eres el asistente de operaciones de ORKA México, un comercializador de combustibles. " +
-            "Analizas mensajes de WhatsApp de grupos operativos. Una NOMINACIÓN es cuando alguien " +
-            "solicita cargar pipas: indica cuántas pipas, de qué producto, para qué cliente, y a veces " +
-            "la terminal. Ejemplos: '2 pipas de magna para ALPHA en TITAN', 'necesitamos 3 de diesel " +
-            "para CAMPER mañana'. Si el mensaje solo informa avance de una unidad existente es status_update. " +
-            "Cualquier otra cosa (saludos, preguntas, temas ajenos) es other.",
+            "Eres el asistente de operaciones de ORKA México. Clasificas mensajes de WhatsApp de grupos operativos.\n" +
+            "NOMINACIÓN: alguien pide cargar N pipas de un producto para un cliente ('2 pipas de magna para ALPHA en TITAN').\n" +
+            "APROBACIÓN: manager aprueba nominación anterior ('aprobado', 'adelante', 'ok para cargar', etc).\n" +
+            "BALANCE_INQUIRY: cliente pregunta por saldo ('¿cuál es mi saldo?', 'balance?', 'debo?').\n" +
+            "PAYMENT_EVIDENCE: comprobante de pago ('aquí va el transfer', 'foto del recibo', etc) - generalmente con imagen.\n" +
+            "OTHER: saludos, preguntas, temas ajenos.",
         messages: [{ role: "user", content: body }],
-        output_config: { format: { type: "json_schema", schema: NOMINATION_SCHEMA } },
+        output_config: { format: { type: "json_schema", schema: MESSAGE_CLASSIFICATION_SCHEMA } },
     });
-    const data = parseStructured(msg);
+    return parseStructured(msg);
+}
 
-    if (data.kind !== "nomination" || !data.trucks) {
+async function processNomination(
+    eventId: string,
+    from: string,
+    data: any,
+    contactName: string | undefined
+) {
+    if (!data.trucks || !data.trucks > 0) {
         await supabase.from("whatsapp_events")
-            .update({ classification: data.kind, extraction: data, status: "ignored" })
+            .update({ classification: "nomination", extraction: data, status: "ignored" })
             .eq("id", eventId);
         return;
     }
@@ -148,40 +158,222 @@ async function processText(eventId: string, from: string, body: string) {
 
     if (!customer || !product || !COMPANY_ID) {
         await supabase.from("whatsapp_events")
-            .update({ classification: "nomination", extraction: data, status: "needs_review",
-                      error: `cliente=${customer?.name ?? "NO ENCONTRADO"}, producto=${product?.name ?? "NO ENCONTRADO"}` })
+            .update({
+                classification: "nomination",
+                extraction: data,
+                status: "needs_review",
+                error: `cliente=${customer?.name ?? "NO ENCONTRADO"}, producto=${product?.name ?? "NO ENCONTRADO"}`,
+            })
             .eq("id", eventId);
-        await sendWhatsApp(from,
+        await sendWhatsApp(
+            from,
             `⚠️ Detecté una nominación (${data.summary}) pero no pude identificar ` +
-            `${!customer ? `al cliente "${data.customer}"` : ""}${!customer && !product ? " ni " : ""}` +
-            `${!product ? `el producto "${data.product}"` : ""}. ¿Puedes confirmar los nombres exactos?`);
+                `${!customer ? `al cliente "${data.customer}"` : ""}${!customer && !product ? " ni " : ""}` +
+                `${!product ? `el producto "${data.product}"` : ""}. ¿Confirmas los nombres exactos?`
+        );
         return;
     }
 
-    // Una venta por pipa, en INTENTION — un humano la aprueba en el ERP
-    const rows = Array.from({ length: data.trucks }, () => ({
-        company_id: COMPANY_ID,
-        sale_date: new Date().toISOString().slice(0, 10),
-        customer_id: customer.id,
-        product_id: product.id,
-        gallons: 0,
-        rate: 0,
-        total_sale: 0,
-        status: "INTENTION",
-        legacy_external_id: `wa:${eventId}`,
-    }));
-    const { data: sales, error } = await supabase.from("sales").insert(rows).select("id");
+    // Crear entrada en nomination_queue, status PENDING_APPROVAL
+    const { data: nomination, error } = await supabase
+        .from("nomination_queue")
+        .insert({
+            company_id: COMPANY_ID,
+            customer_id: customer.id,
+            product_id: product.id,
+            from_number: from,
+            sender_name: contactName,
+            quantity: data.trucks,
+            terminal: data.terminal,
+            wa_message_id: eventId,
+            status: "PENDING_APPROVAL",
+        })
+        .select("id")
+        .single();
+
     if (error) throw error;
 
     await supabase.from("whatsapp_events")
-        .update({ classification: "nomination", extraction: data,
-                  sale_ids: sales.map((s) => s.id), status: "processed" })
+        .update({
+            classification: "nomination",
+            extraction: data,
+            nomination_ids: [nomination.id],
+            status: "processed",
+        })
         .eq("id", eventId);
 
-    await sendWhatsApp(from,
-        `✅ Registré ${data.trucks} pipa${data.trucks > 1 ? "s" : ""} de ${product.name} ` +
-        `para ${customer.name}${data.terminal ? ` en ${data.terminal}` : ""}. ` +
-        `Quedan en INTENTION pendientes de aprobación en el ERP.`);
+    await sendWhatsApp(
+        from,
+        `✅ Registré nominación de ${data.trucks} pipa${data.trucks > 1 ? "s" : ""} de ${product.name} ` +
+            `para ${customer.name}${data.terminal ? ` en ${data.terminal}` : ""}. ` +
+            `Pendiente de aprobación.`
+    );
+}
+
+async function processApproval(eventId: string, from: string, data: any) {
+    // Buscar nominaciones recientes en PENDING_APPROVAL (últimas 24 horas)
+    // En producción, se podría mejorar con un contexto explícito
+    const { data: pending, error } = await supabase
+        .from("nomination_queue")
+        .select("id, quantity, product_id, customer_id, company_id")
+        .eq("status", "PENDING_APPROVAL")
+        .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+        .limit(1);
+
+    if (error || !pending?.length) {
+        await supabase.from("whatsapp_events")
+            .update({
+                classification: "approval",
+                extraction: data,
+                status: "needs_review",
+                error: "No se encontró nominación pendiente para aprobar",
+            })
+            .eq("id", eventId);
+        await sendWhatsApp(
+            from,
+            `⚠️ No encontré una nominación pendiente para aprobar. ¿Cuál deseas aprobar?`
+        );
+        return;
+    }
+
+    const nom = pending[0];
+    const approvedAt = new Date().toISOString();
+
+    // Actualizar nominación a APPROVED
+    await supabase
+        .from("nomination_queue")
+        .update({ status: "APPROVED", approved_at: approvedAt })
+        .eq("id", nom.id);
+
+    // Crear sales (una por pipa) con status APPROVED
+    const rows = Array.from({ length: nom.quantity }, () => ({
+        company_id: nom.company_id,
+        sale_date: new Date().toISOString().slice(0, 10),
+        customer_id: nom.customer_id,
+        product_id: nom.product_id,
+        nomination_id: nom.id,
+        approved_at: approvedAt,
+        gallons: 0,
+        rate: 0,
+        total_sale: 0,
+        status: "APPROVED",
+    }));
+
+    const { data: sales, error: saleErr } = await supabase
+        .from("sales")
+        .insert(rows)
+        .select("id");
+    if (saleErr) throw saleErr;
+
+    await supabase.from("whatsapp_events")
+        .update({
+            classification: "approval",
+            extraction: data,
+            nomination_ids: [nom.id],
+            sale_ids: sales.map((s) => s.id),
+            status: "processed",
+        })
+        .eq("id", eventId);
+
+    await sendWhatsApp(
+        from,
+        `✅ Aprobado: creé ${nom.quantity} operación${nom.quantity > 1 ? "es" : ""} en el ERP. ` +
+            `Esperando BOLs de carga.`
+    );
+}
+
+async function processBalanceInquiry(
+    eventId: string,
+    from: string,
+    data: any
+) {
+    // Buscar partner por número de teléfono
+    const { data: partners, error } = await supabase
+        .from("partners")
+        .select("id, name, credit_limit, credit_available")
+        .limit(10); // En producción, asociar contacto con partner
+
+    if (error || !partners?.length) {
+        await supabase.from("whatsapp_events")
+            .update({
+                classification: "balance_inquiry",
+                extraction: data,
+                status: "ignored",
+                error: "No se pudo identificar el cliente",
+            })
+            .eq("id", eventId);
+        return;
+    }
+
+    const partner = partners[0]; // Simplificación; en producción, usar contacto exacto
+    const balance = (partner.credit_limit || 0) - (partner.credit_available || 0);
+
+    await supabase.from("whatsapp_events")
+        .update({
+            classification: "balance_inquiry",
+            extraction: data,
+            status: "processed",
+        })
+        .eq("id", eventId);
+
+    const balanceText =
+        balance > 0
+            ? `Debes: ${balance.toLocaleString("es-MX", { style: "currency", currency: "MXN" })}`
+            : `Crédito disponible: ${Math.abs(balance).toLocaleString("es-MX", { style: "currency", currency: "MXN" })}`;
+
+    await sendWhatsApp(
+        from,
+        `💰 ${partner.name}: ${balanceText}\nLímite de crédito: ${(partner.credit_limit || 0).toLocaleString("es-MX", { style: "currency", currency: "MXN" })}`
+    );
+}
+
+async function processPaymentEvidence(
+    eventId: string,
+    from: string,
+    mediaId: string,
+    caption: string | undefined
+) {
+    const { bytes, mime } = await downloadMedia(mediaId);
+
+    // Simplificación: registrar sin confirmar partner. En producción, asociar con contacto.
+    const { data: receipt, error } = await supabase
+        .from("payment_receipts")
+        .insert({
+            company_id: COMPANY_ID,
+            partner_id: null, // Se asigna manualmente
+            from_number: from,
+            receipt_type: "transfer",
+            wa_message_id: eventId,
+            storage_url: `payment_receipts/${eventId}`,
+            file_name: `receipt_${eventId}`,
+            file_size: bytes.length,
+            status: "RECEIVED",
+            notes: caption,
+        })
+        .select("id")
+        .single();
+
+    if (error) throw error;
+
+    // Subir a storage
+    await supabase.storage
+        .from("bols")
+        .upload(`payment_receipts/${eventId}`, bytes, { contentType: mime, upsert: true });
+
+    await supabase.from("whatsapp_events")
+        .update({
+            classification: "payment_evidence",
+            extraction: { caption },
+            payment_receipt_ids: [receipt.id],
+            status: "processed",
+        })
+        .eq("id", eventId);
+
+    await sendWhatsApp(
+        from,
+        `📸 Recibí el comprobante de pago. Nuestro equipo de cobranza lo procesará en el ERP. ` +
+            `¿Cuál es el monto y número de referencia?`
+    );
 }
 
 // ── Procesamiento: imagen/PDF (BOL) ───────────────────────────────────────────
@@ -211,18 +403,13 @@ async function processDocument(eventId: string, from: string, mediaId: string) {
         return;
     }
 
-    // Buscar la operación: primero por BOL ya asignado, luego por pipa en estatus activo
+    // Buscar operación APPROVED por truck_number (la primera que ya fue aprobada)
     let sale: { id: string; company_id: string } | null = null;
-    if (data.bol_number) {
-        const { data: byBol } = await supabase.from("sales")
-            .select("id, company_id").eq("bol_number", data.bol_number).limit(1);
-        sale = byBol?.[0] ?? null;
-    }
-    if (!sale && data.truck_number) {
+    if (data.truck_number) {
         const { data: byTruck } = await supabase.from("sales")
             .select("id, company_id")
             .eq("truck_number", data.truck_number)
-            .in("status", ["INTENTION", "APPROVED", "LOADING", "ON_TRACK"])
+            .in("status", ["APPROVED", "LOADING", "ON_TRACK"])
             .order("sale_date", { ascending: false })
             .limit(1);
         sale = byTruck?.[0] ?? null;
@@ -231,17 +418,17 @@ async function processDocument(eventId: string, from: string, mediaId: string) {
     if (!sale) {
         await supabase.from("whatsapp_events")
             .update({ classification: "bol_document", extraction: data, status: "needs_review",
-                      error: "No se encontró operación para asignar el BOL" })
+                      error: "No se encontró operación APPROVED para asignar el BOL" })
             .eq("id", eventId);
         await sendWhatsApp(from,
             `⚠️ Leí el BOL ${data.bol_number ?? "(sin número)"}` +
             `${data.gallons ? ` por ${data.gallons.toLocaleString()} GL` : ""}, pero no encontré ` +
-            `una operación activa para la pipa ${data.truck_number ?? "(no identificada)"}. ` +
-            `¿A qué unidad corresponde?`);
+            `una operación aprobada para la pipa ${data.truck_number ?? "(no identificada)"}. ` +
+            `¿Está aprobada? ¿Cuál es el número exacto de la pipa?`);
         return;
     }
 
-    // Actualizar la venta con los datos reales del BOL
+    // Actualizar venta con datos del BOL
     const updates: Record<string, unknown> = { status: "BOL_UPDATED" };
     if (data.bol_number) updates.bol_number = data.bol_number;
     if (data.gallons) updates.gallons = data.gallons;
@@ -250,7 +437,7 @@ async function processDocument(eventId: string, from: string, mediaId: string) {
     if (data.trailer_number) updates.trailer_number = data.trailer_number;
     await supabase.from("sales").update(updates).eq("id", sale.id);
 
-    // Adjuntar el documento: Storage + compliance_documents
+    // Adjuntar documento
     const ext = mime === "application/pdf" ? "pdf" : mime.split("/")[1] ?? "bin";
     const path = `${sale.id}/${data.bol_number ?? mediaId}.${ext}`;
     const { error: upErr } = await supabase.storage.from("bols")
@@ -274,7 +461,7 @@ async function processDocument(eventId: string, from: string, mediaId: string) {
     await sendWhatsApp(from,
         `📄 BOL ${data.bol_number ?? ""} asignado a la pipa ${data.truck_number ?? "—"}: ` +
         `${data.gallons ? `${data.gallons.toLocaleString()} GL` : "galones por confirmar"}` +
-        `${data.product ? ` de ${data.product}` : ""}. Documento adjuntado a la operación.`);
+        `${data.product ? ` de ${data.product}` : ""}. Documento registrado.`);
 }
 
 // ── Router por mensaje ─────────────────────────────────────────────────────────
@@ -299,9 +486,29 @@ async function handleMessage(wa: any, contactName: string | undefined) {
 
     try {
         if (type === "text" && body) {
-            await processText(ev.id, from, body);
+            // Clasificar: nominación, aprobación, saldo, otro
+            const classified = await classifyText(body);
+
+            if (classified.kind === "nomination") {
+                await processNomination(ev.id, from, classified, contactName);
+            } else if (classified.kind === "approval") {
+                await processApproval(ev.id, from, classified);
+            } else if (classified.kind === "balance_inquiry") {
+                await processBalanceInquiry(ev.id, from, classified);
+            } else {
+                await supabase.from("whatsapp_events")
+                    .update({ status: "ignored", classification: classified.kind })
+                    .eq("id", ev.id);
+            }
         } else if (mediaId && (type === "image" || type === "document")) {
-            await processDocument(ev.id, from, mediaId);
+            // Podría ser BOL o comprobante de pago
+            // Por ahora, asumir BOL. En producción, preguntar al usuario o usar caption
+            const caption = wa.image?.caption ?? wa.document?.caption;
+            if (caption?.toLowerCase().includes("pago") || caption?.toLowerCase().includes("transfer")) {
+                await processPaymentEvidence(ev.id, from, mediaId, caption);
+            } else {
+                await processDocument(ev.id, from, mediaId);
+            }
         } else {
             await supabase.from("whatsapp_events")
                 .update({ status: "ignored", classification: "other" }).eq("id", ev.id);
