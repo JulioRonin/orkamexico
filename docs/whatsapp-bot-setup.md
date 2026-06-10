@@ -57,7 +57,12 @@ Para obtener el `ORKA_COMPANY_ID`:
 select id, type from companies;
 ```
 
-### 3. Registrar el webhook en Meta
+### 3. Crear el bucket de Storage
+
+Dashboard → **Storage → New bucket**: nombre `bols`, **privado** (no público).
+Ahí se guardan los PDFs/fotos de BOL que el bot adjunta a las ventas.
+
+### 4. Registrar el webhook en Meta
 
 En la app de Meta → **WhatsApp → Configuration → Webhook**:
 
@@ -66,7 +71,7 @@ En la app de Meta → **WhatsApp → Configuration → Webhook**:
 - Click **Verify and save** (Meta hace un GET de verificación; la función lo responde).
 - En **Webhook fields** suscribe `messages`.
 
-### 4. Probar
+### 5. Probar
 
 Envía al número del bot:
 
