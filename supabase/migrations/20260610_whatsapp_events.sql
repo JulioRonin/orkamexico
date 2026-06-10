@@ -26,5 +26,7 @@ alter table public.whatsapp_events enable row level security;
 create policy "whatsapp_events_read" on public.whatsapp_events
     for select to authenticated using (true);
 
--- NOTE: el bucket de Storage "bols" (privado) se crea desde el Dashboard
--- (Storage → New bucket) — el esquema storage no es accesible vía SQL aquí.
+-- Storage bucket for BOL documents attached to sales (private)
+insert into storage.buckets (id, name, public)
+values ('bols', 'bols', false)
+on conflict (id) do nothing;

@@ -50,17 +50,16 @@ Dashboard → Project Settings → **Edge Functions → Secrets**:
 | `WHATSAPP_TOKEN` | token permanente del System User de Meta |
 | `WHATSAPP_PHONE_NUMBER_ID` | Phone Number ID de Meta |
 | `ANTHROPIC_API_KEY` | API key de [console.anthropic.com](https://console.anthropic.com) |
-| `ORKA_COMPANY_ID` | uuid de la company ORKA_MX en la tabla `companies` |
+| `ORKA_COMPANY_ID` | `c44e7cb7-61e0-4f06-972c-c2f7c0d49f30` (ORKA_MX) |
 
-Para obtener el `ORKA_COMPANY_ID`:
-```sql
-select id, type from companies;
-```
+### 3. Infraestructura ya desplegada ✅
 
-### 3. Crear el bucket de Storage
+Estos pasos **ya están hechos** — solo de referencia:
 
-Dashboard → **Storage → New bucket**: nombre `bols`, **privado** (no público).
-Ahí se guardan los PDFs/fotos de BOL que el bot adjunta a las ventas.
+- Edge Function `whatsapp-webhook` desplegada y activa (JWT deshabilitado;
+  la autenticación del webhook la hace el verify token de Meta).
+- Tabla `whatsapp_events` creada con RLS.
+- Bucket privado de Storage `bols` creado.
 
 ### 4. Registrar el webhook en Meta
 
